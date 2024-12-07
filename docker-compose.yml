@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  mysql:
+    image: library/mysql:8.0
+    restart: always
+    ports:
+      - 3310:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: leboncode
+    volumes:
+      - admin-leboncode:/var/lib/mysql
+volumes:
+  admin-leboncode:

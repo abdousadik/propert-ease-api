@@ -1,59 +1,121 @@
-# LeBonCode
-Le but de ce test est de réaliser une api pour un site de création de projets immobiliers.  
-Vous commencez le projet avec un symfony skeleton, vous disposez aussi d'un docker-compose.
+# PropertEase API
 
-Ce test à pour but de voir votre logique de code. Il n'y a pas de mauvaise réponse, faites le comme si vous codiez naturellement.  
-Merci de ne pas utiliser de librairies externes telles que api-platform.  
-Vous avez quatre heures pour effectuer ce test, bien entendu nous ne pourrons pas vérifier si vous y passez 42h ou 30mn, mais ça vous donne une indication. 
-Ne restez pas bloqué trop longtemps sur un sujet, n'hésitez pas à faire ce qui vous semble le plus simple en premier. 
+PropertEase API is a backend API designed for managing real estate projects. It provides robust functionalities for user authentication, project creation, updates, search, and secure JWT-based route access. Built with Symfony, it ensures scalability and maintainability.
 
-Avant de commencer, faites un fork du projet. C'est ce fork qui servira de rendu pour ce test.
+## Features
 
-## Projects
+- **User Authentication**: Registration and login with secure JWT tokens.
+- **Project Management**:
+  - Create new real estate projects.
+  - Update existing projects (excluding the project title).
+  - Delete projects (mark as inactive).
+  - Retrieve a list of all projects.
+  - Search projects by title and delivery date range.
+  - View detailed information for a specific project by ID.
+- **Secure Routes**: Only accessible to authenticated users.
 
-#### Create advert `POST`
-Un utilisateur pourra ajouter un appartement (`/project`) avec ces informations :
-- nom du projet
-- libellé du projet
-- Nombre d'étages
-- Adresse
-- Code postal
-- Date de livraison
-- Photo
-#### Delete project  `DELETE`
-Un utilisateur pourra supprimer un projet (`/project/{id}`).
-la suppression rend le projet inactif
-#### Update project `PATCH`
-Un utilisateur pourra modifier les informations d'une annonce (`/project/{id}`).
-Le titre du projet ne peut pas être modifié.
-#### List project `GET`
-Un utilisateur pourra récupérer la liste des projets (`/project`).
-#### Project by id `GET`
-Un utilisateur pourra récupérer les informations d'un projet (`/project/{id}`) avec son `id` associé.
-#### Search project `GET`
-Un utilisateur pourra chercher un projet (`/project/search`).
-- title
-- Date de livraison min
-- Date de livraison max
+## Installation
 
-## User
+### Prerequisites
 
-#### Register `POST`
-Un utilisateur pourra s'enregistrer (`/signup`) avec au minimum :
-- Nom
-- Prénom
-- Numéro de téléphone
-- Email
-- Mot de passe
-lors de la création, l'utilisateur appartient au groupe `USER`
+- PHP 8.1 or higher
+- Composer
+- Docker and Docker Compose
+- Symfony CLI (optional but recommended)
 
-#### Login `POST`
-Par défaut, l'utilisateur appartiendra au groupe `USER`.
-Un utilisateur pourra se connecter (`/signin`) avec ses identifiants :
-- Email
-- Password
+### Steps
 
-[Installation de JWT](https://github.com/lexik/LexikJWTAuthenticationBundle/blob/3.x/Resources/doc/index.rst#installation)
+1. Clone the repository:
 
-#### Sécurisation des routes
-Les routes ne sont accessibles qu'à des utilisateurs connectés
+   ```bash
+   git clone https://github.com/your-username/propretease-api.git
+   cd propretease-api
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   composer install
+   ```
+
+3. Set up environment variables:
+   Copy the `.env` file and adjust database configuration if needed.
+
+   ```bash
+   cp .env .env.local
+   ```
+
+4. Start Docker services:
+
+   ```bash
+   docker-compose up -d
+   ```
+
+5. Run database migrations:
+
+   ```bash
+   symfony console doctrine:migrations:migrate
+   ```
+
+6. Load initial data (optional):
+
+   ```bash
+   symfony console doctrine:fixtures:load
+   ```
+
+7. Start the Symfony development server (if not using Docker):
+   ```bash
+   symfony server:start
+   ```
+
+## Endpoints
+
+### Authentication
+
+- **Register**: `POST /signup`
+  ```json
+  {
+    "firstName": "John",
+    "lastName": "Doe",
+    "phoneNumber": "123456789",
+    "email": "john.doe@example.com",
+    "password": "securePassword"
+  }
+  ```
+- **Login**: `POST /signin`
+  ```json
+  {
+    "email": "john.doe@example.com",
+    "password": "securePassword"
+  }
+  ```
+
+### Project Management
+
+- **Create Project**: `POST /project`
+- **Update Project**: `PATCH /project/{id}`
+- **Delete Project**: `DELETE /project/{id}`
+- **List Projects**: `GET /project`
+- **View Project by ID**: `GET /project/{id}`
+- **Search Projects**: `GET /project/search`
+  - Parameters: `title`, `deliveryDateMin`, `deliveryDateMax`
+
+## Security
+
+This API uses JWT for securing endpoints. Ensure you include the token in the `Authorization` header for protected routes:
+
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+## Tests
+
+Run the test suite with:
+
+```bash
+php bin/phpunit
+```
+
+## License
+
+This project is open-source and available under the [MIT License](LICENSE).
