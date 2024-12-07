@@ -27,7 +27,7 @@ PropertEase API is a backend API designed for managing real estate projects. It 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/your-username/propretease-api.git
+   git clone https://github.com/abdousadik/propretease-api.git
    cd propretease-api
    ```
 
