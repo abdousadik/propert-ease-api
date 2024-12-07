@@ -20,7 +20,6 @@ PropertEase API is a backend API designed for managing real estate projects. It 
 
 - PHP 8.1 or higher
 - Composer
-- Docker and Docker Compose
 - Symfony CLI (optional but recommended)
 
 ### Steps
@@ -45,25 +44,13 @@ PropertEase API is a backend API designed for managing real estate projects. It 
    cp .env .env.local
    ```
 
-4. Start Docker services:
-
-   ```bash
-   docker-compose up -d
-   ```
-
-5. Run database migrations:
+4. Run database migrations:
 
    ```bash
    symfony console doctrine:migrations:migrate
    ```
 
-6. Load initial data (optional):
-
-   ```bash
-   symfony console doctrine:fixtures:load
-   ```
-
-7. Start the Symfony development server (if not using Docker):
+5. Start the Symfony development server:
    ```bash
    symfony server:start
    ```
@@ -77,15 +64,15 @@ PropertEase API is a backend API designed for managing real estate projects. It 
   {
     "firstName": "John",
     "lastName": "Doe",
-    "phoneNumber": "123456789",
+    "phone": "123456789",
     "email": "john.doe@example.com",
     "password": "securePassword"
   }
   ```
-- **Login**: `POST /signin`
+- **Login**: `POST /login_check`
   ```json
   {
-    "email": "john.doe@example.com",
+    "username": "john.doe@example.com",
     "password": "securePassword"
   }
   ```
@@ -98,7 +85,7 @@ PropertEase API is a backend API designed for managing real estate projects. It 
 - **List Projects**: `GET /project`
 - **View Project by ID**: `GET /project/{id}`
 - **Search Projects**: `GET /project/search`
-  - Parameters: `title`, `deliveryDateMin`, `deliveryDateMax`
+  - Parameters: `name`, `deliveryDateMin`, `deliveryDateMax`
 
 ## Security
 
@@ -108,13 +95,9 @@ This API uses JWT for securing endpoints. Ensure you include the token in the `A
 Authorization: Bearer <your-jwt-token>
 ```
 
-## Tests
+## Postman Collection
 
-Run the test suite with:
-
-```bash
-php bin/phpunit
-```
+A Postman collection file is included for testing the API. You can find it at `collection/PropertEaseAPI.postman_collection`.
 
 ## License
 
