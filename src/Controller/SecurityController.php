@@ -48,6 +48,14 @@ class SecurityController extends AbstractController
         if (is_null($email) || empty($email)) {
             return new JsonResponse('Email cannot be blank', Response::HTTP_BAD_REQUEST);
         }
+
+        $found = $this->em->getRepository(User::class)->findOneBy([
+            "email" => $email
+        ]);
+        if ($found) {
+            return new JsonResponse('Email already used!', Response::HTTP_BAD_REQUEST);
+        }
+
         $user->setEmail($email);
 
         $password = $request->get('password');

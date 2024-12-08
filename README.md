@@ -47,10 +47,18 @@ PropertEase API is a backend API designed for managing real estate projects. It 
 4. Run database migrations:
 
    ```bash
-   symfony console doctrine:migrations:migrate
+   php bin/console doctrine:migrations:migrate
    ```
 
-5. Start the Symfony development server:
+5. Generate JWT Keys
+
+   Generate the public & private keys for JWT:
+
+   ```bash
+   php bin/console lexik:jwt:generate-keypair
+   ```
+
+6. Start the Symfony development server:
    ```bash
    symfony server:start
    ```
