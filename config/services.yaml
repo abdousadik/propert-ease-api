@@ -27,5 +27,9 @@ services:
     resource: "../src/Controller/"
     tags: ["controller.service_arguments"]
 
+when@test:
+  parameters:
+    upload_directory: "%kernel.project_dir%/var/test-uploads"
+
   # add more service definitions when explicit configuration is needed
   # please note that last definitions always *replace* previous ones

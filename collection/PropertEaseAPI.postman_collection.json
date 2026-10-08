@@ -1,403 +1,261 @@
 {
-	"info": {
-		"_postman_id": "9209a433-4f66-4003-9b74-5b58efa68dc6",
-		"name": "PropertEaseAPI",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "13312115"
-	},
-	"item": [
-		{
-			"name": "signup",
-			"request": {
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "formdata",
-					"formdata": [
-						{
-							"key": "firstName",
-							"value": "test",
-							"type": "text"
-						},
-						{
-							"key": "lastName",
-							"value": "tester",
-							"type": "text"
-						},
-						{
-							"key": "phone",
-							"value": "2126998877",
-							"type": "text"
-						},
-						{
-							"key": "email",
-							"value": "test23@tester.com",
-							"type": "text"
-						},
-						{
-							"key": "password",
-							"value": "123456",
-							"type": "text"
-						}
-					]
-				},
-				"url": {
-					"raw": "http://127.0.0.1:8000/api/signup",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8000",
-					"path": [
-						"api",
-						"signup"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "token",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"const responseJson = pm.response.json();\r",
-							"pm.collectionVariables.set(\"token\",responseJson.token);"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"protocolProfileBehavior": {
-				"disableBodyPruning": true
-			},
-			"request": {
-				"method": "GET",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\"username\": \"test23@tester.com\",\"password\": \"123456\"}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "http://127.0.0.1:8000/api/login_check",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8000",
-					"path": [
-						"api",
-						"login_check"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "createProject",
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "formdata",
-					"formdata": [
-						{
-							"key": "name",
-							"value": "test name",
-							"type": "text"
-						},
-						{
-							"key": "label",
-							"value": "test label 4",
-							"type": "text"
-						},
-						{
-							"key": "numberOfFloors",
-							"value": "4",
-							"type": "text"
-						},
-						{
-							"key": "address",
-							"value": "5, test street",
-							"type": "text"
-						},
-						{
-							"key": "postalCode",
-							"value": "12000",
-							"type": "text"
-						},
-						{
-							"key": "deliveryDate",
-							"value": "2024-10-29 16:00:00",
-							"type": "text"
-						},
-						{
-							"key": "picture",
-							"type": "file",
-							"src": "/C:/Users/admin/Desktop/FB_IMG_1633501778354 - Copie.jpg"
-						}
-					]
-				},
-				"url": {
-					"raw": "http://127.0.0.1:8000/api/project",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8000",
-					"path": [
-						"api",
-						"project"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "deleteProject",
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "DELETE",
-				"header": [],
-				"url": {
-					"raw": "http://127.0.0.1:8000/api/project/3",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8000",
-					"path": [
-						"api",
-						"project",
-						"3"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "updateProject",
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "PATCH",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n  \"numberOfFloors\": 6,\r\n  \"label\": \"test label 2\",\r\n  \"address\": \"6, test street\",\r\n  \"postalCode\": \"20000\",\r\n  \"deliveryDate\": \"2024-10-29 17:00:00\"\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "http://127.0.0.1:8000/api/project/4",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8000",
-					"path": [
-						"api",
-						"project",
-						"4"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "getProjects",
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "http://127.0.0.1:8000/api/project",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8000",
-					"path": [
-						"api",
-						"project"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "getProject",
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "http://127.0.0.1:8000/api/project/1",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8000",
-					"path": [
-						"api",
-						"project",
-						"1"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "searchProject",
-			"protocolProfileBehavior": {
-				"disableBodyPruning": true
-			},
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{token}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n    \"name\": \"test name\",\r\n    \"deliveryDateMin\": \"2024-10-29 16:00:00\",\r\n    \"deliveryDateMax\": \"2024-10-29 17:00:00\"\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "http://127.0.0.1:8000/api/project/search",
-					"protocol": "http",
-					"host": [
-						"127",
-						"0",
-						"0",
-						"1"
-					],
-					"port": "8000",
-					"path": [
-						"api",
-						"project",
-						"search"
-					]
-				}
-			},
-			"response": []
-		}
-	],
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					""
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"packages": {},
-				"exec": [
-					""
-				]
-			}
-		}
-	],
-	"variable": [
-		{
-			"key": "token",
-			"value": "",
-			"type": "string"
-		}
-	]
+  "info": {
+    "name": "PropertEase API",
+    "description": "Owner-scoped API. Run signup and login first. Login captures the JWT; create captures projectId. Use fresh demo credentials for signup. See docs/api-contract.md for validation and upload limits.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "email",
+      "value": "ada@example.com"
+    },
+    {
+      "key": "password",
+      "value": "a-long-demo-password"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "projectId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Signup",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/signup",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"Ada\",\n  \"lastName\": \"Example\",\n  \"phone\": \"0123456789\",\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Created', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/login_check",
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Authenticated', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) pm.collectionVariables.set('token', pm.response.json().token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create project",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/project",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Garden Homes\",\n  \"label\": \"Residential\",\n  \"numberOfFloors\": 3,\n  \"address\": \"12 Garden Street\",\n  \"postalCode\": \"01234\",\n  \"deliveryDate\": \"2027-06-30 12:00:00\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Created', () => pm.response.to.have.status(201));",
+              "if (pm.response.code === 201) pm.collectionVariables.set('projectId', pm.response.json().data.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List projects",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/project?page=1&limit=20"
+      }
+    },
+    {
+      "name": "Search projects",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/project/search?name=Garden&deliveryDateMin=2027-01-01%2000%3A00%3A00&deliveryDateMax=2027-12-31%2023%3A59%3A59&page=1&limit=20"
+      }
+    },
+    {
+      "name": "Read project",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/project/{{projectId}}"
+      }
+    },
+    {
+      "name": "Update project",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/project/{{projectId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"label\": \"Updated Residential\",\n  \"numberOfFloors\": 4\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Soft-delete project",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/project/{{projectId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Deleted', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create project with picture",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/api/project",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "name",
+              "value": "Garden Homes",
+              "type": "text"
+            },
+            {
+              "key": "label",
+              "value": "Residential",
+              "type": "text"
+            },
+            {
+              "key": "numberOfFloors",
+              "value": "3",
+              "type": "text"
+            },
+            {
+              "key": "address",
+              "value": "12 Garden Street",
+              "type": "text"
+            },
+            {
+              "key": "postalCode",
+              "value": "01234",
+              "type": "text"
+            },
+            {
+              "key": "deliveryDate",
+              "value": "2027-06-30 12:00:00",
+              "type": "text"
+            },
+            {
+              "key": "picture",
+              "type": "file",
+              "src": []
+            }
+          ]
+        }
+      }
+    }
+  ]
 }

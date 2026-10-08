@@ -7,8 +7,24 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ProjectRepository::class)]
+#[ORM\Index(name: 'IDX_PROJECT_OWNER_ACTIVE_ID', columns: ['owner_id', 'active', 'id'])]
 class Project
 {
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?User $owner = null;
+
+    public function getOwner(): ?User
+    {
+        return $this->owner;
+    }
+
+    public function setOwner(User $owner): static
+    {
+        $this->owner = $owner;
+        return $this;
+    }
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]

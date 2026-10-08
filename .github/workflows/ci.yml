@@ -1,0 +1,58 @@
+name: API checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.4']
+        database: [sqlite, mysql]
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test-password
+          MYSQL_DATABASE: propert_ease
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ptest-password"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      APP_ENV: test
+      APP_DEBUG: '0'
+      JWT_PASSPHRASE: test-only-passphrase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: ctype, iconv, fileinfo, mbstring, openssl, sodium, pdo_mysql, pdo_sqlite, gd
+          coverage: none
+      - name: Select database
+        run: |
+          if [ '${{ matrix.database }}' = 'mysql' ]; then
+            echo 'DATABASE_URL=mysql://root:test-password@127.0.0.1:3306/propert_ease?serverVersion=8.0&charset=utf8mb4' >> "$GITHUB_ENV"
+            echo 'MIGRATION_DATABASE_URL=mysql://root:test-password@127.0.0.1:3306/propert_ease?serverVersion=8.0&charset=utf8mb4' >> "$GITHUB_ENV"
+          else
+            echo 'DATABASE_URL=sqlite:///%kernel.project_dir%/var/ci.db' >> "$GITHUB_ENV"
+          fi
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: composer validate --strict
+      - run: composer audit
+      - run: php bin/console lexik:jwt:generate-keypair --skip-if-exists
+      - run: php bin/console doctrine:database:create --if-not-exists
+      - run: php bin/console doctrine:migrations:migrate --no-interaction
+      - run: php bin/console doctrine:schema:validate
+      - run: php bin/console lint:yaml config .github
+      - run: php bin/console lint:container
+      - run: find src migrations tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - run: composer test

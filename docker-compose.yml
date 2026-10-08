@@ -1,14 +1,19 @@
-version: '3.8'
 services:
   mysql:
-    image: library/mysql:8.0
-    restart: always
+    image: mysql:8.0
     ports:
-      - 3310:3306
+      - "127.0.0.1:3310:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: leboncode
+      MYSQL_ROOT_PASSWORD: development-root-password
+      MYSQL_DATABASE: propert_ease
+      MYSQL_USER: propert
+      MYSQL_PASSWORD: development-password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-pdevelopment-root-password"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     volumes:
-      - admin-leboncode:/var/lib/mysql
+      - propert-ease-data:/var/lib/mysql
 volumes:
-  admin-leboncode:
+  propert-ease-data:

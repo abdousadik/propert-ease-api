@@ -5,7 +5,6 @@
 /.env.*.local
 /config/secrets/prod/prod.decrypt.private.php
 /public/bundles/
-/migrations/
 /var/
 /vendor/
 ###< symfony/framework-bundle ###
@@ -13,6 +12,7 @@
 ###> phpunit/phpunit ###
 /phpunit.xml
 .phpunit.result.cache
+/.phpunit.cache/
 ###< phpunit/phpunit ###
 
 ###> symfony/phpunit-bridge ###
@@ -28,3 +28,6 @@
 ###> lexik/jwt-authentication-bundle ###
 /config/jwt/*.pem
 ###< lexik/jwt-authentication-bundle ###
+
+/public/uploaded_pictures/*
+!/public/uploaded_pictures/.gitkeep

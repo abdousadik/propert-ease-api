@@ -2,231 +2,120 @@
 
 namespace App\Controller;
 
+use App\Api\ApiProblem;
+use App\Api\Input;
 use App\Entity\Project;
+use App\Entity\User;
+use App\Repository\ProjectRepository;
+use App\Service\ProjectPictureStorage;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\Routing\Attribute\Route;
 
-class ProjectController extends AbstractController
+final class ProjectController extends AbstractController
 {
-    public $em;
-
-    public function __construct(EntityManagerInterface $em) {
-        $this->em = $em;
-    }
+    public function __construct(private readonly EntityManagerInterface $em, private readonly ProjectRepository $projects, private readonly ProjectPictureStorage $pictures) {}
 
     #[Route('/project', name: 'createProject', methods: ['POST'])]
-    public function createProject(Request $request){
-        $format = 'Y-m-d H:i:s';
-
-        $project = new Project();
-
-        $name = $request->get('name');
-        if (is_null($name) || empty($name)) {
-            return new JsonResponse('Name cannot be blank', Response::HTTP_BAD_REQUEST);
+    public function createProject(Request $request): JsonResponse
+    {
+        $multipart = str_starts_with(strtolower($request->headers->get('Content-Type', '')), 'multipart/form-data');
+        $data = Input::project($multipart ? $request->request->all() : Input::json($request), false, $multipart);
+        $project = (new Project())->setOwner($this->owner())->setActive(true);
+        $this->apply($project, $data);
+        $files = $request->files->all();
+        if (array_diff(array_keys($files), ['picture']) || (isset($files['picture']) && !$files['picture'] instanceof UploadedFile)) {
+            throw new ApiProblem(422, 'validation_failed', 'Provide one picture file only.', ['picture' => 'Unknown file field or nested upload.']);
         }
-        $project->setName($name);
-
-        $label = $request->get('label');
-        if (is_null($label) || empty($label)) {
-            return new JsonResponse('Label cannot be blank', Response::HTTP_BAD_REQUEST);
+        $filename = isset($files['picture']) ? $this->pictures->store($files['picture']) : null;
+        $project->setPicture($filename);
+        try {
+            $this->em->persist($project);
+            $this->em->flush();
+        } catch (\Throwable $e) {
+            if ($filename !== null) {
+                $this->pictures->remove($filename);
+            }
+            throw $e;
         }
-        $project->setLabel($label);
-
-        $numberOfFloors = $request->get('numberOfFloors');
-        if ($numberOfFloors === null || !is_numeric($numberOfFloors)) {
-            return new JsonResponse(['code' => 400, 'message' => 'NumberOfFloors must be a valid integer.'], Response::HTTP_BAD_REQUEST);
-        }
-        $project->setNumberOfFloors((int) $numberOfFloors);
-
-        $address = $request->get('address');
-        if (is_null($address) || empty($address)) {
-            return new JsonResponse('Address cannot be blank', Response::HTTP_BAD_REQUEST);
-        }
-        $project->setAddress($address);
-
-        $postalCode = $request->get('postalCode');
-        if (is_null($postalCode) || empty($postalCode)) {
-            return new JsonResponse('PostalCode cannot be blank', Response::HTTP_BAD_REQUEST);
-        }
-        $project->setPostalCode($postalCode);
-
-        $deliveryDateString = $request->get('deliveryDate');
-        $deliveryDate = \DateTime::createFromFormat($format, $deliveryDateString);
-        if (!$deliveryDate) {
-            return new JsonResponse('Invalid delivery date', Response::HTTP_BAD_REQUEST);
-        }
-        $project->setDeliveryDate($deliveryDate);
-
-        if ($request->files->has('picture')) {
-            $file = $request->files->get('picture');
-            $fileName = md5(uniqid()) . '.' . $file->guessExtension();
-            $file->move($this->getParameter('upload_directory'), $fileName);
-            $project->setPicture($fileName);
-        }
-
-        $project->setActive(true);
-
-        $this->em->persist($project);
-        $this->em->flush();
-        
-        return new JsonResponse(['code' => 200, 'message' => "Project with name '".$request->get('name')."' was created successfully!"], Response::HTTP_OK);
+        return $this->json(['data' => $this->resource($project)], 201, ['Location' => $this->generateUrl('getProjectById', ['id' => $project->getId()])]);
     }
 
-    #[Route('/project/{id}', name: 'deleteProject', methods: ['DELETE'])]
-    public function deleteProject($id): Response
+    #[Route('/project/{id}', name: 'updateProject', requirements: ['id' => '[1-9][0-9]{0,9}'], methods: ['PATCH'])]
+    public function updateProject(Request $request, string $id): JsonResponse
     {
-        $project = $this->em->getRepository(Project::class)->find($id);
+        $project = $this->find($id);
+        $data = Input::project(Input::json($request), true, false);
+        $this->apply($project, $data);
+        $this->em->flush();
+        return $this->json(['data' => $this->resource($project)]);
+    }
 
-        if (!$project) {
-            return $this->json(['message' => 'Project not found'], Response::HTTP_NOT_FOUND);
-        }
-        
+    #[Route('/project/{id}', name: 'deleteProject', requirements: ['id' => '[1-9][0-9]{0,9}'], methods: ['DELETE'])]
+    public function deleteProject(string $id): Response
+    {
+        $project = $this->find($id);
         $project->setActive(false);
-        $this->em->persist($project);
         $this->em->flush();
-
-        return $this->json(['message' => 'Project soft-deleted'], Response::HTTP_OK);
-    }
-
-    #[Route('/project/{id}', name: 'updateProject', methods: ['PATCH'])]
-    public function updateProject(Request $request, int $id): JsonResponse
-    {
-        $format = 'Y-m-d H:i:s';
-        $requestData = json_decode($request->getContent(), true);
-        
-        if(!$requestData){
-            $return = json_encode(['code' => 200, 'message' => 'Project not found']);
-            return new JsonResponse($return, Response::HTTP_OK, [], true);
-        }
-
-        $project = $this->em->getRepository(Project::class)->findOneBy([
-            "id" => $id,
-            "active" => true
-        ]);
-        
-        if (!$project) {
-            return new JsonResponse('Project not found', Response::HTTP_BAD_REQUEST);
-        }
-
-        if (ISSET($requestData['label']) && $requestData['label'] !== null) {
-            $project->setLabel($requestData['label']);
-        }
-
-        if (ISSET($requestData['numberOfFloors']) && $requestData['numberOfFloors'] !== null) {
-            $numberOfFloors = $requestData['numberOfFloors'];
-            if ($numberOfFloors === null || !is_numeric($numberOfFloors)) {
-                return new JsonResponse(['code' => 400, 'message' => 'numberOfFloors must be a valid integer.'], Response::HTTP_BAD_REQUEST);
-            }
-            $project->setNumberOfFloors((int) $numberOfFloors);
-        }
-
-        if (ISSET($requestData['address']) && $requestData['address'] !== null) {
-            $project->setAddress($requestData['address']);
-        }
-
-        if (ISSET($requestData['postalCode']) && $requestData['postalCode'] !== null) {
-            $project->setPostalCode($requestData['postalCode']);
-        }
-
-        if (ISSET($requestData['deliveryDate']) && $requestData['deliveryDate'] !== null) {
-            $deliveryDateString = $requestData['deliveryDate'];
-            $deliveryDate = \DateTime::createFromFormat($format, $deliveryDateString);
-            if (!$deliveryDate) {
-                return new JsonResponse('Invalid delivery date', Response::HTTP_BAD_REQUEST);
-            }
-            $project->setDeliveryDate($deliveryDate);
-        }
-
-        $this->em->persist($project);
-        $this->em->flush();
-
-        return new JsonResponse(['message' => 'Project updated successfully!'], Response::HTTP_OK);
+        return new Response('', 204);
     }
 
     #[Route('/project', name: 'getProjects', methods: ['GET'])]
-    public function getProjects(Request $request){
-        $data = [];
-        $projects = $this->em->getRepository(Project::class)->findBy([
-            "active" => true
-        ]);
-        
-        if(!$projects){
-            $return = json_encode(['code' => 200, 'message' => "NO DATA FOUND :("]);
-            return new JsonResponse($return, Response::HTTP_OK, [], true);
-        }
-
-        foreach ($projects as $project) {
-            $data[] = [
-                'id' => $project->getId(),
-                'name' => $project->getName(),
-                'label' => $project->getLabel(),
-                'address' => $project->getAddress(),
-                'numberOfFloors' => $project->getNumberOfFloors(),
-                'postalCode' => $project->getPostalCode(),
-                'deliveryDate' => $project->getDeliveryDate()->format('Y-m-d H:i:s'),
-                'picture' => $project->getPicture(),
-            ];
-        }
-
-        return new JsonResponse($data, Response::HTTP_OK);
+    public function getProjects(Request $request): JsonResponse
+    {
+        return $this->collection($request, false);
     }
 
     #[Route('/project/search', name: 'searchProject', methods: ['GET'])]
     public function searchProject(Request $request): JsonResponse
     {
-        $requestData = json_decode($request->getContent(), true);
-
-        $projects = $this->em->getRepository(Project::class)->searchProjects($requestData);
-        if(!$projects){
-            $return = json_encode(['code' => 200, 'message' => "NO DATA FOUND :("]);
-            return new JsonResponse($return, Response::HTTP_OK, [], true);
-        }
-        
-        foreach ($projects as $project) {
-            $data[] = [
-                'id' => $project['id'],
-                'name' => $project['name'],
-                'label' => $project['label'],
-                'address' => $project['address'],
-                'numberOfFloors' => $project['numberOfFloors'],
-                'postalCode' => $project['postalCode'],
-                'deliveryDate' => $project['deliveryDate']->format('Y-m-d H:i:s'),
-                'picture' => $project['picture'],
-            ];
-        }
-
-        return new JsonResponse($data, Response::HTTP_OK);
+        return $this->collection($request, true);
     }
 
-    #[Route('/project/{id}', name: 'getProjectById', methods: ['GET'])]
-    public function getProjectById(int $id): JsonResponse
+    #[Route('/project/{id}', name: 'getProjectById', requirements: ['id' => '[1-9][0-9]{0,9}'], methods: ['GET'])]
+    public function getProjectById(string $id): JsonResponse
     {
-        $project = $this->em->getRepository(Project::class)->findOneBy([
-            "id" => $id,
-            "active" => true
-        ]);
+        return $this->json(['data' => $this->resource($this->find($id))]);
+    }
 
-        if (!$project) {
-            $return = json_encode(['code' => 200, 'message' => 'Project not found']);
-            return new JsonResponse($return, Response::HTTP_OK, [], true);
+    private function collection(Request $request, bool $search): JsonResponse
+    {
+        $filters = Input::query($request, $search);
+        $result = $this->projects->searchOwned($this->owner(), $filters, $filters['page'], $filters['limit']);
+        return $this->json(['data' => array_map($this->resource(...), $result['items']), 'meta' => ['page' => $filters['page'], 'limit' => $filters['limit'], 'total' => $result['total']]]);
+    }
+
+    private function owner(): User
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            throw new ApiProblem(401, 'unauthorized', 'Authentication required.');
         }
-        
-        $data = [
-            'id' => $project->getId(),
-            'name' => $project->getName(),
-            'label' => $project->getLabel(),
-            'address' => $project->getAddress(),
-            'numberOfFloors' => $project->getNumberOfFloors(),
-            'postalCode' => $project->getPostalCode(),
-            'deliveryDate' => $project->getDeliveryDate()->format('Y-m-d H:i:s'),
-            'picture' => $project->getPicture(),
-        ];
+        return $user;
+    }
 
-        return new JsonResponse($data, Response::HTTP_OK);
+    private function find(string $id): Project
+    {
+        $project = (int) $id <= 2147483647 ? $this->projects->findActiveOwned((int) $id, $this->owner()) : null;
+        if (!$project) {
+            throw new ApiProblem(404, 'not_found', 'Project not found.');
+        }
+        return $project;
+    }
+
+    private function apply(Project $project, array $data): void
+    {
+        foreach ($data as $field => $value) {
+            $project->{'set'.ucfirst($field)}($value);
+        }
+    }
+
+    private function resource(Project $project): array
+    {
+        return ['id' => $project->getId(), 'name' => $project->getName(), 'label' => $project->getLabel(), 'numberOfFloors' => $project->getNumberOfFloors(), 'address' => $project->getAddress(), 'postalCode' => $project->getPostalCode(), 'deliveryDate' => $project->getDeliveryDate()?->format('Y-m-d H:i:s'), 'picture' => $project->getPicture()];
     }
 }

@@ -1,75 +1,36 @@
 <?php
-
 namespace App\Controller;
 
+use App\Api\ApiProblem;
+use App\Api\Input;
 use App\Entity\User;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\PasswordHasher\PasswordHasherInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Routing\Attribute\Route;
 
-class SecurityController extends AbstractController
+final class SecurityController extends AbstractController
 {
-    public $em;
-    public $passwordHasher;
+    public function __construct(private readonly EntityManagerInterface $em, private readonly UserPasswordHasherInterface $passwordHasher) {}
 
-    public function __construct(EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher) {
-        $this->em = $em;
-        $this->passwordHasher = $passwordHasher;
-    }
-    
     #[Route('/signup', name: 'signup', methods: ['POST'])]
-    public function signup(Request $request){
-        $user = new User();
-
-        $firstName = $request->get('firstName');
-        if (is_null($firstName) || empty($firstName)) {
-            return new JsonResponse('FirstName cannot be blank', Response::HTTP_BAD_REQUEST);
+    public function signup(Request $request): JsonResponse
+    {
+        $data = Input::signup(Input::json($request));
+        if ($this->em->getRepository(User::class)->findOneBy(['email' => $data['email']])) {
+            throw new ApiProblem(409, 'email_conflict', 'Email is already registered.');
         }
-        $user->setFirstName($firstName);
-
-        $lastName = $request->get('lastName');
-        if (is_null($lastName) || empty($lastName)) {
-            return new JsonResponse('LastName cannot be blank', Response::HTTP_BAD_REQUEST);
+        $user = (new User())->setFirstName($data['firstName'])->setLastName($data['lastName'])->setPhone($data['phone'])->setEmail($data['email'])->setRoles(['ROLE_USER']);
+        $user->setPassword($this->passwordHasher->hashPassword($user, $data['password']));
+        try {
+            $this->em->persist($user);
+            $this->em->flush();
+        } catch (UniqueConstraintViolationException $e) {
+            throw new ApiProblem(409, 'email_conflict', 'Email is already registered.');
         }
-        $user->setLastName($lastName);
-
-        $phone = $request->get('phone');
-        if (is_null($phone) || empty($phone)) {
-            return new JsonResponse('Phone cannot be blank', Response::HTTP_BAD_REQUEST);
-        }
-        $user->setPhone($phone);
-
-        $email = $request->get('email');
-        if (is_null($email) || empty($email)) {
-            return new JsonResponse('Email cannot be blank', Response::HTTP_BAD_REQUEST);
-        }
-
-        $found = $this->em->getRepository(User::class)->findOneBy([
-            "email" => $email
-        ]);
-        if ($found) {
-            return new JsonResponse('Email already used!', Response::HTTP_BAD_REQUEST);
-        }
-
-        $user->setEmail($email);
-
-        $password = $request->get('password');
-        if (is_null($password) || empty($password)) {
-            return new JsonResponse('Password cannot be blank', Response::HTTP_BAD_REQUEST);
-        }
-        $hashedPassword = $this->passwordHasher->hashPassword($user, $password);
-        $user->setPassword($hashedPassword);
-
-        $user->setRoles(['USER']);
-
-        $this->em->persist($user);
-        $this->em->flush();
-        
-        return new JsonResponse(['code' => 200, 'message' => "User with email '".$request->get('email')."' was created successfully!"], Response::HTTP_OK);
+        return $this->json(['data' => ['id' => $user->getId(), 'email' => $user->getEmail(), 'firstName' => $user->getFirstName(), 'lastName' => $user->getLastName(), 'phone' => $user->getPhone()]], 201);
     }
 }
