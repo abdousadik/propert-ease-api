@@ -13,7 +13,7 @@ MySQL skips only the two SQLite-trigger failure-injection tests: concurrent sign
 
 Additional successful checks: `composer validate --strict`, `composer audit` (no reported security advisories), PHP syntax checks across source/migrations/tests, Symfony YAML/container lint, MySQL fresh migration and schema validation, Docker Compose configuration, and Postman collection JSON parsing. The documented `composer test` command was exercised successfully; the final additional regressions were then run through the same PHPUnit entry point.
 
-The GitHub workflow implements the same PHP/database matrix. Hosted GitHub Actions execution has **not** been verified before publishing this branch.
+The GitHub workflow implements the same PHP/database matrix. Current hosted results are available in [API checks](https://github.com/abdousadik/propert-ease-api/actions/workflows/ci.yml). SQLite database files are created when migrations connect; the explicit database-create step applies only to MySQL.
 
 ## Regression review
 

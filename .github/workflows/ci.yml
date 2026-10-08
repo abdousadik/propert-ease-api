@@ -49,7 +49,9 @@ jobs:
       - run: composer validate --strict
       - run: composer audit
       - run: php bin/console lexik:jwt:generate-keypair --skip-if-exists
-      - run: php bin/console doctrine:database:create --if-not-exists
+      - name: Create MySQL database
+        if: matrix.database == 'mysql'
+        run: php bin/console doctrine:database:create --if-not-exists
       - run: php bin/console doctrine:migrations:migrate --no-interaction
       - run: php bin/console doctrine:schema:validate
       - run: php bin/console lint:yaml config .github
