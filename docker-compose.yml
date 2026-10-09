@@ -5,7 +5,9 @@ services:
     user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
     volumes:
       - .:/app
-    command: ["sleep", "infinity"]
+    command: ["php", "-S", "0.0.0.0:8000", "-t", "public"]
+    ports:
+      - "127.0.0.1:8000:8000"
 
   database:
     image: mysql:8.0
