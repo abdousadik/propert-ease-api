@@ -46,6 +46,27 @@ class SecurityController extends AbstractController
             );
         }
 
+        $errors = [];
+
+        foreach (['firstName', 'lastName', 'phone', 'email', 'password'] as $field) {
+            if (!is_string($data->$field ?? null)) {
+                $errors[$field] = 'Must be a string.';
+            }
+        }
+
+        if ($errors !== []) {
+            return new JsonResponse(
+                [
+                    'error' => [
+                        'code' => 'validation_failed',
+                        'message' => 'Invalid signup data.',
+                        'details' => $errors,
+                    ],
+                ],
+                Response::HTTP_UNPROCESSABLE_ENTITY
+            );
+        }
+
         $user = new User();
 
         $firstName = $data->firstName ?? null;
