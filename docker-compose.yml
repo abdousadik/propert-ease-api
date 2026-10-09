@@ -1,14 +1,27 @@
-version: '3.8'
 services:
-  mysql:
-    image: library/mysql:8.0
-    restart: always
-    ports:
-      - 3310:3306
-    environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: leboncode
+  app:
+    build: .
+    working_dir: /app
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
     volumes:
-      - admin-leboncode:/var/lib/mysql
+      - .:/app
+    command: ["sleep", "infinity"]
+
+  database:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: propert_ease
+      MYSQL_USER: propert_ease
+      MYSQL_PASSWORD: local_password
+      MYSQL_ROOT_PASSWORD: local_root_password
+    volumes:
+      - database_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
 volumes:
-  admin-leboncode:
+  database_data:
