@@ -140,4 +140,53 @@ final class SignupTest extends WebTestCase
             }
         }
     }
+
+    #[DataProvider('oversizedSignupFields')]
+    public function testSignupRejectsOversizedFields(
+        string $field,
+        string $value,
+        int $limit
+    ): void {
+        $client = static::createClient();
+
+        $payload = [
+            'firstName' => 'Demo',
+            'lastName' => 'User',
+            'phone' => '0600000000',
+            'email' => 'validation-demo@example.com',
+            'password' => 'LocalDemoPassword123!',
+        ];
+
+        $payload[$field] = $value;
+
+        $client->jsonRequest('POST', '/api/signup', $payload);
+
+        self::assertResponseStatusCodeSame(422);
+
+        $body = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame('validation_failed', $body['error']['code']);
+        self::assertSame(
+            "Must be at most $limit characters.",
+            $body['error']['details'][$field]
+        );
+    }
+
+    public static function oversizedSignupFields(): iterable
+    {
+        yield 'first name' => ['firstName', str_repeat('A', 101), 100];
+        yield 'multibyte first name' => ['firstName', str_repeat('é', 101), 100];
+        yield 'last name' => ['lastName', str_repeat('A', 101), 100];
+        yield 'phone' => ['phone', str_repeat('1', 21), 20];
+        yield 'email' => [
+            'email',
+            str_repeat('a', 64).'@'.str_repeat('b', 63).'.'.str_repeat('c', 49).'.com',
+            180,
+        ];
+    }
 }

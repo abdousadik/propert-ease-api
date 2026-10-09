@@ -48,6 +48,13 @@ class SecurityController extends AbstractController
 
         $errors = [];
 
+        $maxLengths = [
+            'firstName' => 100,
+            'lastName' => 100,
+            'phone' => 20,
+            'email' => 180,
+        ];
+
         foreach (['firstName', 'lastName', 'phone', 'email', 'password'] as $field) {
             if (!property_exists($data, $field)) {
                 $errors[$field] = 'Required.';
@@ -55,6 +62,11 @@ class SecurityController extends AbstractController
                 $errors[$field] = 'Must be a string.';
             } elseif ($field !== 'password' && trim($data->$field) === '') {
                 $errors[$field] = 'Must not be blank.';
+            } elseif (
+                isset($maxLengths[$field])
+                && mb_strlen($data->$field, 'UTF-8') > $maxLengths[$field]
+            ) {
+                $errors[$field] = "Must be at most {$maxLengths[$field]} characters.";
             }
         }
 
