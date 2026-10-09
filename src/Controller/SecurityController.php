@@ -49,8 +49,12 @@ class SecurityController extends AbstractController
         $errors = [];
 
         foreach (['firstName', 'lastName', 'phone', 'email', 'password'] as $field) {
-            if (!is_string($data->$field ?? null)) {
+            if (!property_exists($data, $field)) {
+                $errors[$field] = 'Required.';
+            } elseif (!is_string($data->$field)) {
                 $errors[$field] = 'Must be a string.';
+            } elseif ($field !== 'password' && trim($data->$field) === '') {
+                $errors[$field] = 'Must not be blank.';
             }
         }
 
