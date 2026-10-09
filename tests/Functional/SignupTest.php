@@ -189,4 +189,43 @@ final class SignupTest extends WebTestCase
             180,
         ];
     }
+
+    #[DataProvider('invalidEmailAddresses')]
+    public function testSignupRejectsInvalidEmailAddresses(string $email): void
+    {
+        $client = static::createClient();
+
+        $client->jsonRequest('POST', '/api/signup', [
+            'firstName' => 'Demo',
+            'lastName' => 'User',
+            'phone' => '0600000000',
+            'email' => $email,
+            'password' => 'LocalDemoPassword123!',
+        ]);
+
+        self::assertResponseStatusCodeSame(422);
+
+        $body = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame('validation_failed', $body['error']['code']);
+        self::assertSame(
+            'Must be a valid email address.',
+            $body['error']['details']['email']
+        );
+    }
+
+    public static function invalidEmailAddresses(): iterable
+    {
+        yield 'missing at sign' => ['demo.example.com'];
+        yield 'missing local part' => ['@example.com'];
+        yield 'missing domain' => ['demo@'];
+        yield 'multiple at signs' => ['demo@@example.com'];
+        yield 'internal space' => ['demo user@example.com'];
+        yield 'consecutive dots' => ['demo..user@example.com'];
+    }
 }

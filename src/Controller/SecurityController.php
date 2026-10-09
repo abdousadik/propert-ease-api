@@ -46,6 +46,10 @@ class SecurityController extends AbstractController
             );
         }
 
+        if (isset($data->email) && is_string($data->email)) {
+            $data->email = strtolower(trim($data->email));
+        }
+
         $errors = [];
 
         $maxLengths = [
@@ -68,6 +72,13 @@ class SecurityController extends AbstractController
             ) {
                 $errors[$field] = "Must be at most {$maxLengths[$field]} characters.";
             }
+        }
+
+        if (
+            !isset($errors['email'])
+            && filter_var($data->email, FILTER_VALIDATE_EMAIL) === false
+        ) {
+            $errors['email'] = 'Must be a valid email address.';
         }
 
         if ($errors !== []) {
@@ -103,7 +114,7 @@ class SecurityController extends AbstractController
         }
         $user->setPhone($phone);
 
-        $email = $data->email ?? null;
+        $email = $data->email;
         if (is_null($email) || empty($email)) {
             return new JsonResponse('Email cannot be blank', Response::HTTP_BAD_REQUEST);
         }
