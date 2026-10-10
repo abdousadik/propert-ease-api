@@ -1,13 +1,15 @@
-name: Learn CI
+name: CI
 
 on:
+  push:
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  hello:
+  tests:
     runs-on: ubuntu-latest
     env:
       APP_ENV: test
