@@ -99,12 +99,11 @@ final class SignupPersistenceTest extends WebTestCase
         self::assertSame(1, $em->getRepository(User::class)->count([]));
     }
 
-    public function testSignupCreatesUserWithHashedPassword(): void
+    #[DataProvider('validPasswords')]
+    public function testSignupCreatesUserWithHashedPassword(string $password): void
     {
         $client = static::createClient();
         $this->resetTestDatabase();
-
-        $password = 'LocalDemoPassword123!';
 
         $client->jsonRequest('POST', '/api/signup', [
             'firstName' => 'Demo',
@@ -147,5 +146,90 @@ final class SignupPersistenceTest extends WebTestCase
 
         $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
         self::assertTrue($hasher->isPasswordValid($user, $password));
+    }
+
+    public static function validPasswords(): iterable
+    {
+        yield 'minimum length' => [str_repeat('A', 12)];
+        yield 'multibyte minimum' => [str_repeat('é', 12)];
+        yield 'intentional surrounding spaces' => ['  DemoPassword123!  '];
+        yield 'maximum length' => [str_repeat('A', 128)];
+        yield 'multibyte maximum' => [str_repeat('é', 128)];
+    }
+
+    #[DataProvider('shortPasswords')]
+    public function testSignupRejectsShortPasswords(string $password): void
+    {
+        $client = static::createClient();
+
+        $this->resetTestDatabase();
+
+        $client->jsonRequest('POST', '/api/signup', [
+            'firstName' => 'Demo',
+            'lastName' => 'User',
+            'phone' => '0600000000',
+            'email' => 'password-demo@example.com',
+            'password' => $password,
+        ]);
+
+        self::assertResponseStatusCodeSame(422);
+
+        $body = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame('validation_failed', $body['error']['code']);
+        self::assertSame(
+            'Must be at least 12 characters.',
+            $body['error']['details']['password']
+        );
+    }
+
+    public static function shortPasswords(): iterable
+    {
+        yield 'empty' => [''];
+        yield 'one character' => ['A'];
+        yield 'just below minimum' => [str_repeat('A', 11)];
+        yield 'multibyte characters' => [str_repeat('é', 11)];
+    }
+
+    #[DataProvider('oversizedPasswords')]
+    public function testSignupRejectsOversizedPasswords(string $password): void
+    {
+        $client = static::createClient();
+
+        $this->resetTestDatabase();
+
+        $client->jsonRequest('POST', '/api/signup', [
+            'firstName' => 'Demo',
+            'lastName' => 'User',
+            'phone' => '0600000000',
+            'email' => hash('sha256', $password).'@example.com',
+            'password' => $password,
+        ]);
+
+        self::assertResponseStatusCodeSame(422);
+
+        $body = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame('validation_failed', $body['error']['code']);
+        self::assertSame(
+            'Must be at most 128 characters.',
+            $body['error']['details']['password']
+        );
+    }
+
+    public static function oversizedPasswords(): iterable
+    {
+        yield 'ASCII' => [str_repeat('A', 129)];
+        yield 'multibyte' => [str_repeat('é', 129)];
     }
 }

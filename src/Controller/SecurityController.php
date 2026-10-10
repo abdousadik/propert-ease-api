@@ -74,6 +74,16 @@ class SecurityController extends AbstractController
             }
         }
 
+        if (!isset($errors['password'])) {
+            $passwordLength = mb_strlen($data->password, 'UTF-8');
+
+            if ($passwordLength < 12) {
+                $errors['password'] = 'Must be at least 12 characters.';
+            } elseif ($passwordLength > 128) {
+                $errors['password'] = 'Must be at most 128 characters.';
+            }
+        }
+
         if (
             !isset($errors['email'])
             && filter_var($data->email, FILTER_VALIDATE_EMAIL) === false
