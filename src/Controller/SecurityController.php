@@ -25,6 +25,22 @@ class SecurityController extends AbstractController
     #[Route('/signup', name: 'signup', methods: ['POST'])]
     public function signup(Request $request){
 
+        $contentType = strtolower(trim(
+            explode(';', $request->headers->get('Content-Type', ''), 2)[0]
+        ));
+
+        if ($contentType !== 'application/json') {
+            return new JsonResponse(
+                [
+                    'error' => [
+                        'code' => 'unsupported_media_type',
+                        'message' => 'Content-Type must be application/json.',
+                    ],
+                ],
+                Response::HTTP_UNSUPPORTED_MEDIA_TYPE
+            );
+        }
+
         try {
             $data = json_decode(
                 $request->getContent(),

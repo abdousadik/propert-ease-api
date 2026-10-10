@@ -228,4 +228,77 @@ final class SignupTest extends WebTestCase
         yield 'internal space' => ['demo user@example.com'];
         yield 'consecutive dots' => ['demo..user@example.com'];
     }
+
+    #[DataProvider('invalidJsonBodies')]
+    public function testSignupRejectsInvalidJsonBodies(
+        string $content,
+        string $expectedCode
+    ): void {
+        $client = static::createClient();
+
+        $client->request(
+            'POST',
+            '/api/signup',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            $content
+        );
+
+        self::assertResponseStatusCodeSame(400);
+        self::assertResponseHeaderSame('content-type', 'application/json');
+
+        $body = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame($expectedCode, $body['error']['code']);
+    }
+
+    public static function invalidJsonBodies(): iterable
+    {
+        yield 'malformed object' => ['{"firstName":', 'invalid_json'];
+        yield 'empty body' => ['', 'invalid_json'];
+        yield 'array' => ['[]', 'invalid_body'];
+        yield 'null' => ['null', 'invalid_body'];
+        yield 'string' => ['"Demo"', 'invalid_body'];
+        yield 'number' => ['123', 'invalid_body'];
+        yield 'boolean' => ['true', 'invalid_body'];
+    }
+
+    #[DataProvider('unsupportedSignupContentTypes')]
+    public function testSignupRejectsUnsupportedContentTypes(string $contentType): void
+    {
+        $client = static::createClient();
+
+        $client->request(
+            'POST',
+            '/api/signup',
+            [],
+            [],
+            ['CONTENT_TYPE' => $contentType],
+            '{}'
+        );
+
+        self::assertResponseStatusCodeSame(415);
+
+        $body = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame('unsupported_media_type', $body['error']['code']);
+    }
+
+    public static function unsupportedSignupContentTypes(): iterable
+    {
+        yield 'plain text' => ['text/plain'];
+        yield 'form data' => ['application/x-www-form-urlencoded'];
+        yield 'missing type' => [''];
+    }
 }
