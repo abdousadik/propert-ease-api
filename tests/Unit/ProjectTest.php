@@ -11,9 +11,9 @@ final class ProjectTest extends TestCase
     {
         // ARRANGE
         $project = new Project();
+        $project->setActive(true);
 
         // ACT
-        $project->setActive(true);
         $project->setActive(false);
         $status = $project->isActive();
 
@@ -25,9 +25,9 @@ final class ProjectTest extends TestCase
     {
         // ARRANGE
         $project = new Project();
+        $project->setActive(false);
 
         // ACT
-        $project->setActive(false);
         $project->setActive(true);
         $status = $project->isActive();
 
