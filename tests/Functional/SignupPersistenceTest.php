@@ -277,4 +277,51 @@ final class SignupPersistenceTest extends WebTestCase
         yield 'client-supplied ID' => ['id', 123];
         yield 'misspelled field' => ['fristName', 'Demo'];
     }
+
+    #[DataProvider('maximumLengthTextFields')]
+    public function testSignupAcceptsTextAtMaximumLength(
+        string $field,
+        string $value
+    ): void {
+        $client = static::createClient();
+        $this->resetTestDatabase();
+
+        $payload = [
+            'firstName' => 'Demo',
+            'lastName' => 'User',
+            'phone' => '0600000000',
+            'email' => 'boundary@example.com',
+            'password' => 'LocalDemoPassword123!',
+        ];
+
+        $payload[$field] = $value;
+
+        $client->jsonRequest('POST', '/api/signup', $payload);
+
+        self::assertResponseStatusCodeSame(201);
+
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $em->clear();
+
+        $user = $em->getRepository(User::class)->findOneBy([
+            'email' => $payload['email'],
+        ]);
+
+        self::assertNotNull($user);
+
+        $getter = 'get'.ucfirst($field);
+        self::assertSame($value, $user->$getter());
+    }
+
+    public static function maximumLengthTextFields(): iterable
+    {
+        yield 'first name' => ['firstName', str_repeat('A', 100)];
+        yield 'multibyte first name' => ['firstName', str_repeat('é', 100)];
+        yield 'last name' => ['lastName', str_repeat('A', 100)];
+        yield 'phone' => ['phone', str_repeat('1', 20)];
+        yield 'email' => [
+            'email',
+            str_repeat('a', 64).'@'.str_repeat('b', 63).'.'.str_repeat('c', 47).'.com',
+        ];
+    }
 }
