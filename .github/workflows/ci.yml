@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Print a message
-        run: echo "My first GitHub Actions workflow"
-        
-      - name: Deliberate failure
-        run: exit 1
+      - name: Check out repository
+        uses: actions/checkout@v6
 
-      - name: Message after failure
-        run: echo "Did this step run?"
+      - name: Inspect project files
+        run: |
+          pwd
+          ls -la
+          test -f composer.json
