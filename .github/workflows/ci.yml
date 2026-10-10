@@ -35,5 +35,20 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
+      - name: Validate Composer configuration
+        run: composer validate
+
+      - name: Audit dependencies
+        run: composer audit
+
+      - name: Check PHP requirements
+        run: composer check-platform-reqs
+
+      - name: Lint YAML configuration
+        run: php bin/console lint:yaml config
+
+      - name: Lint service container
+        run: php bin/console lint:container
+
       - name: Run tests
         run: php vendor/bin/phpunit
