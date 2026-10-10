@@ -13,3 +13,9 @@ jobs:
     steps:
       - name: Print a message
         run: echo "My first GitHub Actions workflow"
+        
+      - name: Deliberate failure
+        run: exit 1
+
+      - name: Message after failure
+        run: echo "Did this step run?"
