@@ -14,8 +14,15 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Inspect project files
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_sqlite, sodium, openssl, dom, xml
+          tools: composer:v2
+          coverage: none
+
+      - name: Check tool versions
         run: |
-          pwd
-          ls -la
-          test -f composer.json
+          php --version
+          composer --version
