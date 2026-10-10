@@ -148,6 +148,17 @@ class SecurityController extends AbstractController
         $this->em->persist($user);
         $this->em->flush();
         
-        return new JsonResponse(['code' => 200, 'message' => "User with email '".$email."' was created successfully!"], Response::HTTP_OK);
+        return new JsonResponse(
+            [
+                'data' => [
+                    'id' => $user->getId(),
+                    'email' => $user->getEmail(),
+                    'firstName' => $user->getFirstName(),
+                    'lastName' => $user->getLastName(),
+                    'phone' => $user->getPhone(),
+                ],
+            ],
+            Response::HTTP_CREATED
+        );
     }
 }

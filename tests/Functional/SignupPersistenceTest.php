@@ -7,6 +7,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 final class SignupPersistenceTest extends WebTestCase
 {
@@ -25,7 +26,7 @@ final class SignupPersistenceTest extends WebTestCase
             'password' => 'LocalDemoPassword123!',
         ]);
 
-        self::assertResponseStatusCodeSame(200);
+        self::assertResponseStatusCodeSame(201);
 
         $em->clear();
 
@@ -76,7 +77,7 @@ final class SignupPersistenceTest extends WebTestCase
         ];
 
         $client->jsonRequest('POST', '/api/signup', $payload);
-        self::assertResponseStatusCodeSame(200);
+        self::assertResponseStatusCodeSame(201);
 
         $payload['email'] = $email;
 
@@ -96,5 +97,55 @@ final class SignupPersistenceTest extends WebTestCase
         $em->clear();
 
         self::assertSame(1, $em->getRepository(User::class)->count([]));
+    }
+
+    public function testSignupCreatesUserWithHashedPassword(): void
+    {
+        $client = static::createClient();
+        $this->resetTestDatabase();
+
+        $password = 'LocalDemoPassword123!';
+
+        $client->jsonRequest('POST', '/api/signup', [
+            'firstName' => 'Demo',
+            'lastName' => 'User',
+            'phone' => '0600000000',
+            'email' => 'demo@example.com',
+            'password' => $password,
+        ]);
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertResponseHeaderSame('content-type', 'application/json');
+
+        $body = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $em->clear();
+
+        $user = $em->getRepository(User::class)->findOneBy([
+            'email' => 'demo@example.com',
+        ]);
+
+        self::assertNotNull($user);
+
+        self::assertSame([
+            'data' => [
+                'id' => $user->getId(),
+                'email' => 'demo@example.com',
+                'firstName' => 'Demo',
+                'lastName' => 'User',
+                'phone' => '0600000000',
+            ],
+        ], $body);
+
+        self::assertNotSame($password, $user->getPassword());
+
+        $hasher = static::getContainer()->get(UserPasswordHasherInterface::class);
+        self::assertTrue($hasher->isPasswordValid($user, $password));
     }
 }
