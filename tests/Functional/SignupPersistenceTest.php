@@ -15,18 +15,7 @@ final class SignupPersistenceTest extends WebTestCase
     {
         $client = static::createClient();
 
-        $em = static::getContainer()->get(EntityManagerInterface::class);
-
-        // Verify the database target before rebuilding its tables.
-        self::assertSame(
-            static::getContainer()->getParameter('kernel.project_dir').'/var/test.db',
-            $em->getConnection()->getParams()['path'] ?? null
-        );
-
-        $metadata = $em->getMetadataFactory()->getAllMetadata();
-        $schemaTool = new SchemaTool($em);
-        $schemaTool->dropSchema($metadata);
-        $schemaTool->createSchema($metadata);
+        $em = $this->resetTestDatabase();
 
         $client->jsonRequest('POST', '/api/signup', [
             'firstName' => 'Demo',
@@ -53,5 +42,59 @@ final class SignupPersistenceTest extends WebTestCase
         yield 'mixed case' => ['Demo@Example.COM'];
         yield 'surrounding spaces' => ['  Demo@Example.COM  '];
         yield 'surrounding tabs and newlines' => ["\tDemo@Example.COM\n"];
+    }
+
+    private function resetTestDatabase(): EntityManagerInterface
+    {
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+
+        self::assertSame(
+            static::getContainer()->getParameter('kernel.project_dir').'/var/test.db',
+            $em->getConnection()->getParams()['path'] ?? null
+        );
+
+        $metadata = $em->getMetadataFactory()->getAllMetadata();
+        $schemaTool = new SchemaTool($em);
+        $schemaTool->dropSchema($metadata);
+        $schemaTool->createSchema($metadata);
+
+        return $em;
+    }
+
+    #[DataProvider('emailAddressesToNormalize')]
+    public function testSignupRejectsDuplicateEmail(string $email): void
+    {
+        $client = static::createClient();
+        $this->resetTestDatabase();
+
+        $payload = [
+            'firstName' => 'Demo',
+            'lastName' => 'User',
+            'phone' => '0600000000',
+            'email' => 'demo@example.com',
+            'password' => 'LocalDemoPassword123!',
+        ];
+
+        $client->jsonRequest('POST', '/api/signup', $payload);
+        self::assertResponseStatusCodeSame(200);
+
+        $payload['email'] = $email;
+
+        $client->jsonRequest('POST', '/api/signup', $payload);
+        self::assertResponseStatusCodeSame(409);
+
+        $body = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame('email_already_used', $body['error']['code']);
+
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $em->clear();
+
+        self::assertSame(1, $em->getRepository(User::class)->count([]));
     }
 }

@@ -123,7 +123,15 @@ class SecurityController extends AbstractController
             "email" => $email
         ]);
         if ($found) {
-            return new JsonResponse('Email already used!', Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(
+                [
+                    'error' => [
+                        'code' => 'email_already_used',
+                        'message' => 'Email already used.',
+                    ],
+                ],
+                Response::HTTP_CONFLICT
+            );
         }
 
         $user->setEmail($email);
