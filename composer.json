@@ -1,4 +1,6 @@
 {
+    "name": "abdousadik/propert-ease-api",
+    "description": "A Symfony API for managing real estate development projects.",
     "type": "project",
     "license": "proprietary",
     "require": {
