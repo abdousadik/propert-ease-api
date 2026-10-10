@@ -9,6 +9,9 @@ permissions:
 jobs:
   hello:
     runs-on: ubuntu-latest
+    env:
+      APP_ENV: test
+      APP_DEBUG: '0'
 
     steps:
       - name: Check out repository
@@ -26,3 +29,6 @@ jobs:
         run: |
           php --version
           composer --version
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
