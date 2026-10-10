@@ -68,6 +68,14 @@ class SecurityController extends AbstractController
 
         $errors = [];
 
+        $allowedFields = ['firstName', 'lastName', 'phone', 'email', 'password'];
+
+        foreach (get_object_vars($data) as $field => $value) {
+            if (!in_array($field, $allowedFields, true)) {
+                $errors[$field] = 'Unknown field.';
+            }
+        }
+
         $maxLengths = [
             'firstName' => 100,
             'lastName' => 100,
@@ -75,7 +83,7 @@ class SecurityController extends AbstractController
             'email' => 180,
         ];
 
-        foreach (['firstName', 'lastName', 'phone', 'email', 'password'] as $field) {
+        foreach ($allowedFields as $field) {
             if (!property_exists($data, $field)) {
                 $errors[$field] = 'Required.';
             } elseif (!is_string($data->$field)) {

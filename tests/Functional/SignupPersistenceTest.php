@@ -232,4 +232,49 @@ final class SignupPersistenceTest extends WebTestCase
         yield 'ASCII' => [str_repeat('A', 129)];
         yield 'multibyte' => [str_repeat('é', 129)];
     }
+
+    #[DataProvider('unknownSignupFields')]
+    public function testSignupRejectsUnknownFields(
+        string $field,
+        mixed $value
+    ): void {
+        $client = static::createClient();
+        $this->resetTestDatabase();
+
+        $payload = [
+            'firstName' => 'Demo',
+            'lastName' => 'User',
+            'phone' => '0600000000',
+            'email' => 'unknown-field@example.com',
+            'password' => 'LocalDemoPassword123!',
+        ];
+
+        $payload[$field] = $value;
+
+        $client->jsonRequest('POST', '/api/signup', $payload);
+
+        self::assertResponseStatusCodeSame(422);
+
+        $body = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
+        self::assertSame('validation_failed', $body['error']['code']);
+        self::assertSame('Unknown field.', $body['error']['details'][$field]);
+
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $em->clear();
+
+        self::assertSame(0, $em->getRepository(User::class)->count([]));
+    }
+
+    public static function unknownSignupFields(): iterable
+    {
+        yield 'client-supplied roles' => ['roles', ['ROLE_ADMIN']];
+        yield 'client-supplied ID' => ['id', 123];
+        yield 'misspelled field' => ['fristName', 'Demo'];
+    }
 }
