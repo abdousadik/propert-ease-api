@@ -18,7 +18,7 @@ PropertEase API is a backend API designed for managing real estate projects. It 
 
 ### Prerequisites
 
-- PHP 8.1 or higher
+- PHP 8.4 or higher
 - Composer
 - Symfony CLI (optional but recommended)
 
@@ -27,8 +27,8 @@ PropertEase API is a backend API designed for managing real estate projects. It 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/abdousadik/propretease-api.git
-   cd propretease-api
+   git clone https://github.com/abdousadik/propert-ease-api.git
+   cd propert-ease-api
    ```
 
 2. Install dependencies:
