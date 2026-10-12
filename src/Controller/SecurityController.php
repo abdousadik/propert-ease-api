@@ -129,29 +129,11 @@ class SecurityController extends AbstractController
         }
 
         $user = new User();
-
-        $firstName = $data->firstName ?? null;
-        if (is_null($firstName) || empty($firstName)) {
-            return new JsonResponse('FirstName cannot be blank', Response::HTTP_BAD_REQUEST);
-        }
-        $user->setFirstName($firstName);
-
-        $lastName = $data->lastName ?? null;
-        if (is_null($lastName) || empty($lastName)) {
-            return new JsonResponse('LastName cannot be blank', Response::HTTP_BAD_REQUEST);
-        }
-        $user->setLastName($lastName);
-
-        $phone = $data->phone ?? null;
-        if (is_null($phone) || empty($phone)) {
-            return new JsonResponse('Phone cannot be blank', Response::HTTP_BAD_REQUEST);
-        }
-        $user->setPhone($phone);
+        $user->setFirstName($data->firstName);
+        $user->setLastName($data->lastName);
+        $user->setPhone($data->phone);
 
         $email = $data->email;
-        if (is_null($email) || empty($email)) {
-            return new JsonResponse('Email cannot be blank', Response::HTTP_BAD_REQUEST);
-        }
 
         $found = $this->em->getRepository(User::class)->findOneBy([
             "email" => $email
@@ -170,10 +152,7 @@ class SecurityController extends AbstractController
 
         $user->setEmail($email);
 
-        $password = $data->password ?? null;
-        if (is_null($password) || empty($password)) {
-            return new JsonResponse('Password cannot be blank', Response::HTTP_BAD_REQUEST);
-        }
+        $password = $data->password;
         $hashedPassword = $this->passwordHasher->hashPassword($user, $password);
         $user->setPassword($hashedPassword);
 

@@ -325,4 +325,44 @@ final class SignupPersistenceTest extends WebTestCase
             str_repeat('a', 64).'@'.str_repeat('b', 63).'.'.str_repeat('c', 47).'.com',
         ];
     }
+
+    #[DataProvider('zeroTextFields')]
+    public function testSignupAcceptsNonblankZeroText(string $field): void
+    {
+        $client = static::createClient();
+        $this->resetTestDatabase();
+
+        $payload = [
+            'firstName' => 'Demo',
+            'lastName' => 'User',
+            'phone' => '0600000000',
+            'email' => 'zero-text@example.com',
+            'password' => 'LocalDemoPassword123!',
+        ];
+
+        $payload[$field] = '0';
+
+        $client->jsonRequest('POST', '/api/signup', $payload);
+
+        self::assertResponseStatusCodeSame(201);
+
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $em->clear();
+
+        $user = $em->getRepository(User::class)->findOneBy([
+            'email' => $payload['email'],
+        ]);
+
+        self::assertNotNull($user);
+
+        $getter = 'get'.ucfirst($field);
+        self::assertSame('0', $user->$getter());
+    }
+
+    public static function zeroTextFields(): iterable
+    {
+        yield 'first name' => ['firstName'];
+        yield 'last name' => ['lastName'];
+        yield 'phone' => ['phone'];
+    }
 }
