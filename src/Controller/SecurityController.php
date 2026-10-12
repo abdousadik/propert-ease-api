@@ -9,6 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\PasswordHasher\PasswordHasherInterface;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
@@ -158,8 +159,20 @@ class SecurityController extends AbstractController
 
         $user->setRoles(['ROLE_USER']);
 
-        $this->em->persist($user);
-        $this->em->flush();
+        try {
+            $this->em->persist($user);
+            $this->em->flush();
+        } catch (UniqueConstraintViolationException $exception) {
+            return new JsonResponse(
+                [
+                    'error' => [
+                        'code' => 'email_already_used',
+                        'message' => 'Email already used.',
+                    ],
+                ],
+                Response::HTTP_CONFLICT
+            );
+        }
         
         return new JsonResponse(
             [
