@@ -131,6 +131,7 @@ final class SignupPersistenceTest extends WebTestCase
         ]);
 
         self::assertNotNull($user);
+        self::assertSame(['ROLE_USER'], $user->getRoles());
 
         self::assertSame([
             'data' => [

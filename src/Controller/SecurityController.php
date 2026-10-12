@@ -177,7 +177,7 @@ class SecurityController extends AbstractController
         $hashedPassword = $this->passwordHasher->hashPassword($user, $password);
         $user->setPassword($hashedPassword);
 
-        $user->setRoles(['USER']);
+        $user->setRoles(['ROLE_USER']);
 
         $this->em->persist($user);
         $this->em->flush();
