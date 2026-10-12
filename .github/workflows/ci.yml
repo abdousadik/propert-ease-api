@@ -50,5 +50,8 @@ jobs:
       - name: Lint service container
         run: php bin/console lint:container
 
+      - name: Generate test JWT keys
+        run: php bin/console lexik:jwt:generate-keypair --env=test
+
       - name: Run tests
         run: php vendor/bin/phpunit
