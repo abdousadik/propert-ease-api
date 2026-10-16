@@ -12,7 +12,7 @@ final class ProjectAccessTest extends WebTestCase
         $client = static::createClient();
 
         // ACT
-        $client->request('GET', '/api/project');
+        $client->request('GET', '/api/organizations/1/projects');
 
         // ASSERT
         self::assertResponseStatusCodeSame(401);

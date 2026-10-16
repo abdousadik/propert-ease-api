@@ -45,12 +45,28 @@ final class LoginTest extends WebTestCase
         self::assertIsString($body['token']);
         self::assertNotSame('', $body['token']);
 
+        $token = $body['token'];
+
+        $client->jsonRequest(
+            'POST',
+            '/api/organizations',
+            ['name' => 'Login test company'],
+            ['HTTP_AUTHORIZATION' => 'Bearer '.$token]
+        );
+
+        self::assertResponseStatusCodeSame(201);
+
+        $organization = json_decode(
+            $client->getResponse()->getContent(),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+
         $client->request(
             'GET',
-            '/api/project',
-            server: [
-                'HTTP_AUTHORIZATION' => 'Bearer '.$body['token'],
-            ]
+            '/api/organizations/'.$organization['data']['id'].'/projects',
+            server: ['HTTP_AUTHORIZATION' => 'Bearer '.$token]
         );
 
         self::assertResponseStatusCodeSame(200);
@@ -135,7 +151,7 @@ final class LoginTest extends WebTestCase
 
         $client->request(
             'GET',
-            '/api/project',
+            '/api/organizations/1/projects',
             server: [
                 'HTTP_AUTHORIZATION' => 'Bearer not-a-valid-jwt',
             ]
@@ -175,7 +191,7 @@ final class LoginTest extends WebTestCase
 
         $client->request(
             'GET',
-            '/api/project',
+            '/api/organizations/1/projects',
             server: [
                 'HTTP_AUTHORIZATION' => 'Bearer '.$token,
             ]
