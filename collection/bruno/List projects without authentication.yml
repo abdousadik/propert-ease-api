@@ -5,7 +5,7 @@ info:
 
 http:
   method: GET
-  url: http://localhost:8000/api/project
+  url: http://localhost:8000/api/organizations/1/projects
 
 settings:
   encodeUrl: true

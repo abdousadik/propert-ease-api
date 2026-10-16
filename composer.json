@@ -2,7 +2,7 @@
     "name": "abdousadik/propert-ease-api",
     "description": "A Symfony API for managing real estate development projects.",
     "type": "project",
-    "license": "proprietary",
+    "license": "MIT",
     "require": {
         "php": ">=8.4",
         "ext-ctype": "*",
