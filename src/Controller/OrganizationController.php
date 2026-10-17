@@ -7,6 +7,7 @@ use App\Entity\Organization;
 use App\Entity\User;
 use App\Enum\MembershipRole;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Service\JsonRequestDecoder;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,7 +18,8 @@ final class OrganizationController extends AbstractController
     #[Route('/organizations', name: 'create_organization', methods: ['POST'])]
     public function create(
         Request $request,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        JsonRequestDecoder $jsonDecoder
     ): JsonResponse {
         $user = $this->getUser();
 
@@ -28,38 +30,10 @@ final class OrganizationController extends AbstractController
             );
         }
 
-        $contentType = strtolower(trim(
-            explode(';', $request->headers->get('Content-Type', ''), 2)[0]
-        ));
+        $data = $jsonDecoder->decode($request);
 
-        if ($contentType !== 'application/json') {
-            return $this->json([
-                'error' => [
-                    'code' => 'unsupported_media_type',
-                    'message' => 'Content-Type must be application/json.',
-                ],
-            ], 415);
-        }
-
-        try {
-            $data = json_decode(
-                $request->getContent(),
-                false,
-                512,
-                JSON_THROW_ON_ERROR
-            );
-        } catch (\JsonException) {
-            return $this->json(
-                ['error' => ['code' => 'invalid_json', 'message' => 'Malformed JSON body.']],
-                400
-            );
-        }
-
-        if (!$data instanceof \stdClass) {
-            return $this->json(
-                ['error' => ['code' => 'invalid_body', 'message' => 'Expected a JSON object.']],
-                400
-            );
+        if ($data instanceof JsonResponse) {
+            return $data;
         }
 
         $errors = [];

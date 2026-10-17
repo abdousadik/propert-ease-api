@@ -5,6 +5,10 @@ namespace App\Controller;
 use App\Entity\Organization;
 use App\Entity\Project;
 use App\Security\Voter\OrganizationVoter;
+use App\Service\DeliveryDateParser;
+use App\Service\JsonRequestDecoder;
+use App\Service\PaginationParser;
+use App\Service\ProjectPresenter;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -23,7 +27,10 @@ final class OrganizationProjectController extends AbstractController
     public function list(
         int $organizationId,
         Request $request,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        PaginationParser $paginationParser,
+        DeliveryDateParser $dateParser,
+        ProjectPresenter $presenter
     ): JsonResponse {
         $organization = $em->find(Organization::class, $organizationId);
 
@@ -41,43 +48,9 @@ final class OrganizationProjectController extends AbstractController
 
         $filters = $request->query->all();
 
-        $pagination = [];
-        $paginationErrors = [];
-
-        foreach (['page' => 1, 'limit' => 20] as $field => $default) {
-            $raw = $filters[$field] ?? (string) $default;
-
-            if (
-                !is_string($raw)
-                || preg_match('/^[1-9][0-9]*$/D', $raw) !== 1
-            ) {
-                $paginationErrors[$field] = 'Must be a positive decimal integer.';
-                continue;
-            }
-
-            $value = filter_var($raw, FILTER_VALIDATE_INT, [
-                'options' => [
-                    'min_range' => 1,
-                    'max_range' => $field === 'limit' ? 100 : 2147483647,
-                ],
-            ]);
-
-            if ($value === false) {
-                $paginationErrors[$field] = $field === 'limit'
-                    ? 'Must be between 1 and 100.'
-                    : 'Page is too large.';
-                continue;
-            }
-
-            $pagination[$field] = $value;
-        }
-
-        if (
-            $paginationErrors === []
-            && $pagination['page'] - 1 > intdiv(2147483647, $pagination['limit'])
-        ) {
-            $paginationErrors['page'] = 'Page offset is too large.';
-        }
+        $result = $paginationParser->parse($filters);
+        $pagination = $result['values'];
+        $paginationErrors = $result['errors'];
 
         if ($paginationErrors !== []) {
             return $this->json([
@@ -140,7 +113,7 @@ final class OrganizationProjectController extends AbstractController
             }
 
             try {
-                $date = $this->parseDeliveryDate($filters[$field]);
+                $date = $dateParser->parse($filters[$field]);
 
                 if ($date === null) {
                     throw new \InvalidArgumentException(
@@ -200,16 +173,7 @@ final class OrganizationProjectController extends AbstractController
         $data = [];
 
         foreach ($projects as $project) {
-            $data[] = [
-                'id' => $project->getId(),
-                'name' => $project->getName(),
-                'label' => $project->getLabel(),
-                'address' => $project->getAddress(),
-                'numberOfFloors' => $project->getNumberOfFloors(),
-                'postalCode' => $project->getPostalCode(),
-                'deliveryDate' => $project->getDeliveryDate()?->format('Y-m-d H:i:s'),
-                'picture' => $project->getPicture(),
-            ];
+            $data[] = $presenter->present($project);
         }
 
         return $this->json([
@@ -237,7 +201,8 @@ final class OrganizationProjectController extends AbstractController
     public function detail(
         int $organizationId,
         int $projectId,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        ProjectPresenter $presenter
     ): JsonResponse {
         $organization = $em->find(Organization::class, $organizationId);
 
@@ -269,16 +234,7 @@ final class OrganizationProjectController extends AbstractController
         }
 
         return $this->json([
-            'data' => [
-                'id' => $project->getId(),
-                'name' => $project->getName(),
-                'label' => $project->getLabel(),
-                'address' => $project->getAddress(),
-                'numberOfFloors' => $project->getNumberOfFloors(),
-                'postalCode' => $project->getPostalCode(),
-                'deliveryDate' => $project->getDeliveryDate()?->format('Y-m-d H:i:s'),
-                'picture' => $project->getPicture(),
-            ],
+            'data' => $presenter->present($project),
         ]);
     }
 
@@ -349,7 +305,9 @@ final class OrganizationProjectController extends AbstractController
     public function create(
         int $organizationId,
         Request $request,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        JsonRequestDecoder $jsonDecoder,
+        DeliveryDateParser $dateParser
     ): JsonResponse {
         $organization = $em->find(Organization::class, $organizationId);
 
@@ -374,42 +332,10 @@ final class OrganizationProjectController extends AbstractController
             ], 403);
         }
 
-        $contentType = strtolower(trim(
-            explode(';', $request->headers->get('Content-Type', ''), 2)[0]
-        ));
+        $data = $jsonDecoder->decode($request);
 
-        if ($contentType !== 'application/json') {
-            return $this->json([
-                'error' => [
-                    'code' => 'unsupported_media_type',
-                    'message' => 'Content-Type must be application/json.',
-                ],
-            ], 415);
-        }
-
-        try {
-            $data = json_decode(
-                $request->getContent(),
-                false,
-                512,
-                JSON_THROW_ON_ERROR
-            );
-        } catch (\JsonException) {
-            return $this->json([
-                'error' => [
-                    'code' => 'invalid_json',
-                    'message' => 'Malformed JSON body.',
-                ],
-            ], 400);
-        }
-
-        if (!$data instanceof \stdClass) {
-            return $this->json([
-                'error' => [
-                    'code' => 'invalid_body',
-                    'message' => 'Expected a JSON object.',
-                ],
-            ], 400);
+        if ($data instanceof JsonResponse) {
+            return $data;
         }
 
         $errors = [];
@@ -456,7 +382,7 @@ final class OrganizationProjectController extends AbstractController
 
         if (property_exists($data, 'deliveryDate')) {
             try {
-                $deliveryDate = $this->parseDeliveryDate($data->deliveryDate);
+                $deliveryDate = $dateParser->parse($data->deliveryDate);
             } catch (\InvalidArgumentException $exception) {
                 $errors['deliveryDate'] = $exception->getMessage();
             }
@@ -506,7 +432,9 @@ final class OrganizationProjectController extends AbstractController
         int $organizationId,
         int $projectId,
         Request $request,
-        EntityManagerInterface $em
+        EntityManagerInterface $em,
+        JsonRequestDecoder $jsonDecoder,
+        DeliveryDateParser $dateParser
     ): JsonResponse {
         $organization = $em->find(Organization::class, $organizationId);
 
@@ -546,42 +474,10 @@ final class OrganizationProjectController extends AbstractController
             ], 403);
         }
 
-        $contentType = strtolower(trim(
-            explode(';', $request->headers->get('Content-Type', ''), 2)[0]
-        ));
+        $data = $jsonDecoder->decode($request);
 
-        if ($contentType !== 'application/json') {
-            return $this->json([
-                'error' => [
-                    'code' => 'unsupported_media_type',
-                    'message' => 'Content-Type must be application/json.',
-                ],
-            ], 415);
-        }
-
-        try {
-            $data = json_decode(
-                $request->getContent(),
-                false,
-                512,
-                JSON_THROW_ON_ERROR
-            );
-        } catch (\JsonException) {
-            return $this->json([
-                'error' => [
-                    'code' => 'invalid_json',
-                    'message' => 'Malformed JSON body.',
-                ],
-            ], 400);
-        }
-
-        if (!$data instanceof \stdClass) {
-            return $this->json([
-                'error' => [
-                    'code' => 'invalid_body',
-                    'message' => 'Expected a JSON object.',
-                ],
-            ], 400);
+        if ($data instanceof JsonResponse) {
+            return $data;
         }
 
         $errors = [];
@@ -608,7 +504,7 @@ final class OrganizationProjectController extends AbstractController
 
             if ($field === 'deliveryDate') {
                 try {
-                    $deliveryDate = $this->parseDeliveryDate($value);
+                    $deliveryDate = $dateParser->parse($value);
                 } catch (\InvalidArgumentException $exception) {
                     $errors[$field] = $exception->getMessage();
                 }
@@ -664,28 +560,5 @@ final class OrganizationProjectController extends AbstractController
                 'label' => $project->getLabel(),
             ],
         ]);
-    }
-
-    private function parseDeliveryDate(mixed $value): ?\DateTimeImmutable
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        if (is_string($value)) {
-            $date = \DateTimeImmutable::createFromFormat(
-                '!Y-m-d H:i:s',
-                $value,
-                new \DateTimeZone('UTC')
-            );
-
-            if ($date !== false && $date->format('Y-m-d H:i:s') === $value) {
-                return $date;
-            }
-        }
-
-        throw new \InvalidArgumentException(
-            'Must be null or a valid UTC date in YYYY-MM-DD HH:MM:SS format.'
-        );
     }
 }
