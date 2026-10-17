@@ -300,7 +300,13 @@ The response contains a `data` array. Empty results return:
 
 ```json
 {
-  "data": []
+  "data": [],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 0,
+    "totalPages": 0
+  }
 }
 ```
 
@@ -330,7 +336,20 @@ bounds.
 Name searches treat `%` and `_` literally. Results contain only active projects
 in the selected organization and are ordered by ID.
 
-Pagination is not implemented yet.
+### Pagination
+
+List/search accepts `page` and `limit` query parameters.
+
+- Default page: 1.
+- Default limit: 20; maximum: 100.
+- Values must be positive decimal integers without leading zeros.
+- Invalid values or offsets exceeding 2147483647 return 422.
+- Results are ordered by project ID.
+- `meta.total` counts active projects matching the organization and search filters.
+- `meta.totalPages` is 0 when no projects match.
+- Pages beyond the last return an empty `data` array while retaining the total.
+
+Example: `/api/organizations/1/projects?page=2&limit=20`
 
 ### Archive a project
 
@@ -432,7 +451,7 @@ Use local variables for credentials and tokens. Do not commit real secrets.
 ## Planned Development
 
 - Membership-management endpoints.
-- Pagination and controller/validation refactoring.
+- Controller/validation refactoring.
 - Validated image uploads.
 - Properties and public listing publication.
 - Enquiries and construction updates.

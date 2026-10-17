@@ -41,6 +41,58 @@ final class OrganizationProjectController extends AbstractController
 
         $filters = $request->query->all();
 
+        $pagination = [];
+        $paginationErrors = [];
+
+        foreach (['page' => 1, 'limit' => 20] as $field => $default) {
+            $raw = $filters[$field] ?? (string) $default;
+
+            if (
+                !is_string($raw)
+                || preg_match('/^[1-9][0-9]*$/D', $raw) !== 1
+            ) {
+                $paginationErrors[$field] = 'Must be a positive decimal integer.';
+                continue;
+            }
+
+            $value = filter_var($raw, FILTER_VALIDATE_INT, [
+                'options' => [
+                    'min_range' => 1,
+                    'max_range' => $field === 'limit' ? 100 : 2147483647,
+                ],
+            ]);
+
+            if ($value === false) {
+                $paginationErrors[$field] = $field === 'limit'
+                    ? 'Must be between 1 and 100.'
+                    : 'Page is too large.';
+                continue;
+            }
+
+            $pagination[$field] = $value;
+        }
+
+        if (
+            $paginationErrors === []
+            && $pagination['page'] - 1 > intdiv(2147483647, $pagination['limit'])
+        ) {
+            $paginationErrors['page'] = 'Page offset is too large.';
+        }
+
+        if ($paginationErrors !== []) {
+            return $this->json([
+                'error' => [
+                    'code' => 'validation_failed',
+                    'message' => 'Invalid pagination parameters.',
+                    'details' => $paginationErrors,
+                ],
+            ], 422);
+        }
+
+        $page = $pagination['page'];
+        $limit = $pagination['limit'];
+        $offset = ($page - 1) * $limit;
+
         $query = $em->getRepository(Project::class)
             ->createQueryBuilder('p')
             ->where('p.organization = :organization')
@@ -131,7 +183,19 @@ final class OrganizationProjectController extends AbstractController
                 ->setParameter('deliveryDateMax', $dateBounds['deliveryDateMax']);
         }
 
-        $projects = $query->getQuery()->getResult();
+        $countQuery = clone $query;
+
+        $total = (int) $countQuery
+            ->select('COUNT(p.id)')
+            ->resetDQLPart('orderBy')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $projects = $query
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
 
         $data = [];
 
@@ -148,7 +212,17 @@ final class OrganizationProjectController extends AbstractController
             ];
         }
 
-        return $this->json(['data' => $data]);
+        return $this->json([
+            'data' => $data,
+            'meta' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'totalPages' => $total === 0
+                    ? 0
+                    : intdiv($total - 1, $limit) + 1,
+            ],
+        ]);
     }
 
     #[Route(
