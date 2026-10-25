@@ -6,6 +6,8 @@ RUN apt-get update \
 
 RUN docker-php-ext-install pdo_mysql
 
+COPY docker/php/security.ini /usr/local/etc/php/conf.d/security.ini
+
 ENV COMPOSER_HOME=/tmp/composer
 
 WORKDIR /app

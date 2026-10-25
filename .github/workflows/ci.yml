@@ -22,6 +22,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
+          ini-values: session.upload_progress.enabled=0
           php-version: '8.4'
           extensions: mbstring, pdo_sqlite, sodium, openssl, dom, xml
           tools: composer:v2
@@ -89,6 +90,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
+          ini-values: session.upload_progress.enabled=0
           php-version: '8.4'
           extensions: mbstring, pdo_mysql, pdo_sqlite, sodium, openssl, dom, xml
           tools: composer:v2

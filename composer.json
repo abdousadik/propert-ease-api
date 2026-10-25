@@ -4,7 +4,7 @@
     "type": "project",
     "license": "MIT",
     "require": {
-        "php": ">=8.4",
+        "php": ">=8.4.27",
         "ext-ctype": "*",
         "ext-iconv": "*",
         "doctrine/dbal": "^3",
