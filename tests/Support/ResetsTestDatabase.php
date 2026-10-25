@@ -3,14 +3,14 @@
 namespace App\Tests\Support;
 
 use PHPUnit\Framework\Assert;
-use Symfony\Component\DependencyInjection\Container;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 
+/**
+ * @mixin \Symfony\Bundle\FrameworkBundle\Test\KernelTestCase
+ */
 trait ResetsTestDatabase
 {
-    abstract protected static function getContainer(): Container;
-
     private function resetTestDatabase(): EntityManagerInterface
     {
         $em = static::getContainer()->get(EntityManagerInterface::class);

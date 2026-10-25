@@ -55,3 +55,57 @@ jobs:
 
       - name: Run tests
         run: php vendor/bin/phpunit
+
+  mysql-concurrency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      APP_ENV: test
+      APP_DEBUG: '0'
+      MYSQL_TEST_DATABASE_URL: 'mysql://propert_ease:ci_password@127.0.0.1:3306/propert_ease_concurrency_test?serverVersion=8.0&charset=utf8mb4'
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: propert_ease_concurrency_test
+          MYSQL_USER: propert_ease
+          MYSQL_PASSWORD: ci_password
+          MYSQL_ROOT_PASSWORD: ci_root_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+          --health-start-period=30s
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_mysql, pdo_sqlite, sodium, openssl, dom, xml
+          tools: composer:v2
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Apply migrations to isolated MySQL database
+        run: |
+          DATABASE_URL="$MYSQL_TEST_DATABASE_URL" \
+            php bin/console doctrine:migrations:migrate --env=dev --no-interaction
+
+      - name: Validate MySQL schema
+        run: |
+          DATABASE_URL="$MYSQL_TEST_DATABASE_URL" \
+            php bin/console doctrine:schema:validate --env=dev
+
+      - name: Run membership concurrency tests
+        run: php vendor/bin/phpunit tests/Integration/MembershipConcurrencyTest.php

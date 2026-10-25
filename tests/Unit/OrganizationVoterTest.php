@@ -78,5 +78,19 @@ final class OrganizationVoterTest extends TestCase
         yield 'nonmember cannot edit' => [
             null, OrganizationVoter::EDIT, VoterInterface::ACCESS_DENIED,
         ];
+
+        yield 'owner manages members' => [
+            MembershipRole::Owner,
+            OrganizationVoter::MANAGE_MEMBERS,
+            VoterInterface::ACCESS_GRANTED,
+        ];
+
+        foreach ([MembershipRole::Manager, MembershipRole::Viewer, null] as $role) {
+            yield ($role?->value ?? 'nonmember').' cannot manage members' => [
+                $role,
+                OrganizationVoter::MANAGE_MEMBERS,
+                VoterInterface::ACCESS_DENIED,
+            ];
+        }
     }
 }
