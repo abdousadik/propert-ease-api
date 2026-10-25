@@ -15,6 +15,8 @@ final class OrganizationVoter extends Voter
     public const EDIT = 'ORGANIZATION_EDIT';
     public const VIEW = 'ORGANIZATION_VIEW';
 
+    public const MANAGE_MEMBERS = 'ORGANIZATION_MANAGE_MEMBERS';
+
     public function __construct(
         private readonly MembershipRepository $memberships
     ) {
@@ -23,7 +25,11 @@ final class OrganizationVoter extends Voter
     protected function supports(string $attribute, mixed $subject): bool
     {
         return $subject instanceof Organization
-            && in_array($attribute, [self::VIEW, self::EDIT], true);
+            && in_array(
+                $attribute,
+                [self::VIEW, self::EDIT, self::MANAGE_MEMBERS],
+                true
+            );
     }
 
     protected function voteOnAttribute(
@@ -54,6 +60,8 @@ final class OrganizationVoter extends Voter
                 [MembershipRole::Owner, MembershipRole::Manager],
                 true
             ),
+            self::MANAGE_MEMBERS =>
+                $membership->getRole() === MembershipRole::Owner,
             default => false,
         };
     }

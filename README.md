@@ -220,8 +220,56 @@ The authenticated creator becomes an Owner in the same database transaction.
 A user can have different roles in different organizations. Membership roles
 are separate from global authentication roles.
 
-Membership-management endpoints are not implemented yet. Creating an
-organization does not grant public publishing approval.
+### Membership Management
+
+Any organization member can list memberships. Only Owners can add users,
+change roles, or remove memberships.
+
+| Method | Path | Operation |
+|---|---|---|
+| GET | `/api/organizations/{organizationId}/memberships` | List members |
+| POST | `/api/organizations/{organizationId}/memberships` | Add a registered user |
+| PATCH | `/api/organizations/{organizationId}/memberships/{membershipId}` | Change role |
+| DELETE | `/api/organizations/{organizationId}/memberships/{membershipId}` | Remove membership |
+
+Add an existing registered user:
+
+```json
+{
+  "email": "member@example.com",
+  "role": "viewer"
+}
+```
+
+Change a role:
+
+```json
+{
+  "role": "manager"
+}
+```
+
+Roles are `owner`, `manager`, and `viewer`. Email addresses are normalized
+before lookup. Unknown fields and invalid roles return 422.
+
+- Successful addition returns 201.
+- Duplicate membership returns 409 with `membership_already_exists`.
+- An unregistered email returns 404 with `user_not_found`.
+- Successful role change returns 200.
+- Successful removal returns 204 without deleting the user account.
+- Foreign membership IDs return 404.
+- Removing or demoting the final Owner returns 409 with `last_owner`.
+- An Owner may step down or leave when another Owner remains.
+
+Membership mutations share an organization-level transaction lock and recheck
+the actor's current permissions inside the transaction. MySQL concurrency
+tests cover competing self-demotions, removals, and mixed operations.
+
+Membership lists expose membership ID, user ID, first/last name, and role.
+They do not expose email addresses, phone numbers, or password hashes.
+
+Email invitations and acceptance are not implemented. Organization creation
+does not grant public publishing approval.
 
 ## Project Endpoints
 
@@ -363,12 +411,12 @@ Archived projects are excluded from lists, searches, and active detail lookups.
 |---|---|
 | 200 | Successful read or update |
 | 201 | Resource created |
-| 204 | Project archived |
+| 204 | Project archived or membership removed |
 | 400 | Malformed JSON or non-object JSON body |
 | 401 | Authentication failed or token missing/invalid/expired |
-| 403 | Organization member lacks write permission |
-| 404 | Organization inaccessible, or project missing/foreign/archived |
-| 409 | Signup email already used |
+| 403 | Organization member lacks permission for the operation |
+| 404 | Organization inaccessible, project missing/foreign/archived, membership missing/foreign, or requested user unregistered |
+| 409 | Signup email already used, duplicate membership, or attempted removal/demotion of the last Owner |
 | 415 | Unsupported request content type |
 | 422 | Input validation failed |
 
@@ -409,8 +457,10 @@ Run a focused test file:
 docker compose exec app php vendor/bin/phpunit tests/Functional/OrganizationTest.php
 ```
 
-Tests use the separate SQLite database at `var/test.db`.
+The regular suite uses the separate SQLite database at `var/test.db`.
 Database-reset helpers verify that path before recreating its schema.
+MySQL concurrency tests use a dedicated database and are skipped when
+`MYSQL_TEST_DATABASE_URL` is not configured.
 
 Test signing keys are generated under `var/jwt/` and ignored by Git.
 
@@ -418,18 +468,75 @@ The suite covers:
 
 - Signup validation, persistence, password hashing, and uniqueness conflicts.
 - Login and JWT authentication.
-- Membership persistence and uniqueness.
+- Membership persistence, uniqueness, administration permissions, and last-Owner protection.
 - Organization permission decisions.
 - Organization creation and request validation.
 - Project isolation, write permissions, validation, and search.
 
 SQLite tests do not replace verification of MySQL-specific migrations.
 
+### MySQL Concurrency Tests
+
+These tests run competing membership mutations through separate processes and
+database connections. Scenarios cover two self-demotions, two self-removals,
+and a mixed demotion/removal.
+
+They require the dedicated database `propert_ease_concurrency_test`. The test
+and workers refuse other database names and clean up their own fixture records.
+
+Create the local test database using the existing Compose credentials:
+
+```bash
+docker compose exec -T database sh -c \
+  'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" exec mysql -u root' <<'SQL'
+CREATE DATABASE IF NOT EXISTS propert_ease_concurrency_test
+    CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+GRANT ALL PRIVILEGES ON propert_ease_concurrency_test.*
+    TO 'propert_ease'@'%';
+SQL
+```
+
+Set the connection URL in your WSL terminal:
+
+```bash
+export MYSQL_TEST_DATABASE_URL='mysql://propert_ease:local_password@database:3306/propert_ease_concurrency_test?serverVersion=8.0&charset=utf8mb4'
+```
+
+Apply migrations and validate the schema:
+
+```bash
+docker compose exec \
+  -e DATABASE_URL="$MYSQL_TEST_DATABASE_URL" \
+  app php bin/console doctrine:migrations:migrate \
+  --env=dev --no-interaction
+
+docker compose exec \
+  -e DATABASE_URL="$MYSQL_TEST_DATABASE_URL" \
+  app php bin/console doctrine:schema:validate --env=dev
+```
+
+The explicit URL targets the dedicated database. Using `--env=dev` here avoids
+the test environment's automatic MySQL database-name suffix.
+
+Run the concurrency tests:
+
+```bash
+docker compose exec \
+  -e MYSQL_TEST_DATABASE_URL \
+  app php vendor/bin/phpunit tests/Integration/MembershipConcurrencyTest.php
+```
+
+Without that environment variable, the concurrency cases are skipped.
+The default SQLite suite can still run independently.
+
 ## Continuous Integration
 
 GitHub Actions runs on pushes, pull requests, and manual dispatch.
 
-The workflow:
+The workflow contains two independent jobs:
+
+### Regular checks (`tests`)
 
 1. Installs PHP and locked Composer dependencies.
 2. Validates Composer configuration.
@@ -437,7 +544,17 @@ The workflow:
 4. Checks PHP platform requirements.
 5. Lints YAML and the service container.
 6. Generates disposable test JWT keys.
-7. Runs PHPUnit.
+7. Runs the regular PHPUnit suite.
+
+### MySQL verification (`mysql-concurrency`)
+
+1. Starts a disposable MySQL 8.0 service.
+2. Installs PHP and locked Composer dependencies.
+3. Applies all migrations to a fresh dedicated database.
+4. Validates the MySQL schema.
+5. Runs concurrent membership-mutation tests.
+
+CI database credentials are disposable test values, not production credentials.
 
 ## Bruno Collection
 
@@ -450,7 +567,7 @@ Use local variables for credentials and tokens. Do not commit real secrets.
 
 ## Planned Development
 
-- Membership-management endpoints.
+- Email invitations and membership acceptance.
 - Controller/validation refactoring.
 - Validated image uploads.
 - Properties and public listing publication.
