@@ -25,7 +25,7 @@ and cloud deployment are planned.
 
 ## Technology
 
-- PHP 8.4
+- PHP 8.4, minimum patch 8.4.27
 - Symfony 7.4 LTS
 - Doctrine ORM and Doctrine Migrations
 - MySQL 8.0 for local development
