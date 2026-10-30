@@ -1,14 +1,21 @@
 # PropertEase API
 
-A Symfony API for managing real estate development projects within
-organization workspaces.
+A PHP 8.4 / Symfony 7.4 API for real estate development projects within organization workspaces.
 
-Users can belong to multiple organizations, with separate permissions in
-each. Projects belong to an organization, and access is controlled through
-membership.
+Users can belong to multiple organizations with separate Owner, Manager, and Viewer permissions. Project access is scoped to the selected organization. Membership changes run in transactions and prevent removal or demotion of the final Owner.
 
-The project is under active development. Public property listings, a frontend,
-and cloud deployment are planned.
+The repository includes unit, functional, and integration tests, separate-process MySQL concurrency tests, Docker Compose, and GitHub Actions checks.
+
+Originally developed as a Kaliti hiring exercise, PropertEase is now being extended as a personal engineering project. Cloud deployment, public property listings, and a frontend are planned.
+
+## Start here
+
+- [Run locally](#local-setup)
+- [Organizations and permissions](#organizations-and-permissions)
+- [Project endpoints](#project-endpoints)
+- [Tests](#tests)
+- [MySQL concurrency tests](#mysql-concurrency-tests)
+- [Continuous integration](#continuous-integration)
 
 ## Features
 
@@ -564,6 +571,18 @@ The collection currently contains signup and unauthenticated project-list
 requests. Additional requests will be added as the API develops.
 
 Use local variables for credentials and tokens. Do not commit real secrets.
+
+## Architecture at a glance
+
+- Controllers validate HTTP requests, check permissions, and return JSON responses.
+- OrganizationVoter maps organization membership to read, edit, and membership-management permissions.
+- MembershipManager serializes membership changes using an organization-row lock and checks actor permissions inside the transaction.
+- Doctrine entities and migrations define persistence; project queries include organization scope.
+- Functional tests exercise API behavior; MySQL integration tests exercise competing membership mutations.
+
+## Project origin
+
+This project began as a Kaliti recruitment coding exercise and has since been extended as a personal engineering project. The existing MIT license includes a HypeCodeTeam copyright notice, which is retained. The relationship between that notice and the original exercise materials is still being verified.
 
 ## Planned Development
 
