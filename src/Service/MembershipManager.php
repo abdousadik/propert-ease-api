@@ -7,6 +7,11 @@ use App\Exception\MembershipChangeRejected;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 
+/**
+ * Membership writers serialize on the organization row before reading permissions
+ * or counting Owners. The lock lasts until the transaction commits or rolls back.
+ * See README's membership transaction contract before adding another writer.
+ */
 final class MembershipManager
 {
     public function __construct(private readonly Connection $connection)
