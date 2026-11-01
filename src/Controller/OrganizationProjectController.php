@@ -2,6 +2,9 @@
 
 namespace App\Controller;
 
+use App\ValueResolver\ResourceIdValueResolver;
+use Symfony\Component\HttpKernel\Attribute\ValueResolver;
+
 use App\Entity\Organization;
 use App\Entity\Project;
 use App\Security\Voter\OrganizationVoter;
@@ -26,7 +29,7 @@ final class OrganizationProjectController extends AbstractController
         methods: ['GET']
     )]
     public function list(
-        int $organizationId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $organizationId,
         Request $request,
         EntityManagerInterface $em,
         PaginationParser $paginationParser,
@@ -200,8 +203,8 @@ final class OrganizationProjectController extends AbstractController
         methods: ['GET']
     )]
     public function detail(
-        int $organizationId,
-        int $projectId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $organizationId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $projectId,
         EntityManagerInterface $em,
         ProjectPresenter $presenter
     ): JsonResponse {
@@ -249,8 +252,8 @@ final class OrganizationProjectController extends AbstractController
         methods: ['DELETE']
     )]
     public function archive(
-        int $organizationId,
-        int $projectId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $organizationId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $projectId,
         EntityManagerInterface $em
     ): Response {
         $organization = $em->find(Organization::class, $organizationId);
@@ -304,7 +307,7 @@ final class OrganizationProjectController extends AbstractController
         methods: ['POST']
     )]
     public function create(
-        int $organizationId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $organizationId,
         Request $request,
         EntityManagerInterface $em,
         JsonRequestDecoder $jsonDecoder,
@@ -376,8 +379,8 @@ final class OrganizationProjectController extends AbstractController
         methods: ['PATCH']
     )]
     public function update(
-        int $organizationId,
-        int $projectId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $organizationId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $projectId,
         Request $request,
         EntityManagerInterface $em,
         JsonRequestDecoder $jsonDecoder,

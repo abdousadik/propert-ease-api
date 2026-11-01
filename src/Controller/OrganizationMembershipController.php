@@ -2,6 +2,9 @@
 
 namespace App\Controller;
 
+use App\ValueResolver\ResourceIdValueResolver;
+use Symfony\Component\HttpKernel\Attribute\ValueResolver;
+
 use App\Entity\Membership;
 use App\Entity\Organization;
 use App\Security\Voter\OrganizationVoter;
@@ -26,7 +29,7 @@ final class OrganizationMembershipController extends AbstractController
         methods: ['GET']
     )]
     public function list(
-        int $organizationId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $organizationId,
         EntityManagerInterface $em
     ): JsonResponse {
         $organization = $em->find(Organization::class, $organizationId);
@@ -79,7 +82,7 @@ final class OrganizationMembershipController extends AbstractController
         methods: ['POST']
     )]
     public function create(
-        int $organizationId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $organizationId,
         Request $request,
         EntityManagerInterface $em,
         JsonRequestDecoder $jsonDecoder,
@@ -195,8 +198,8 @@ final class OrganizationMembershipController extends AbstractController
         methods: ['PATCH']
     )]
     public function update(
-        int $organizationId,
-        int $membershipId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $organizationId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $membershipId,
         Request $request,
         EntityManagerInterface $em,
         JsonRequestDecoder $jsonDecoder,
@@ -317,8 +320,8 @@ final class OrganizationMembershipController extends AbstractController
         methods: ['DELETE']
     )]
     public function remove(
-        int $organizationId,
-        int $membershipId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $organizationId,
+        #[ValueResolver(ResourceIdValueResolver::class)] int $membershipId,
         EntityManagerInterface $em,
         MembershipManager $membershipManager
     ): Response {
