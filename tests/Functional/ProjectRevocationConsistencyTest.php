@@ -8,6 +8,8 @@ use App\Enum\MembershipRole;
 use App\Service\MembershipManager;
 use App\Tests\Support\CreatesProjectAccessFixtures;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Configuration;
+use Doctrine\DBAL\Driver\AbstractSQLiteDriver\Middleware\EnableForeignKeys;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -43,9 +45,12 @@ final class ProjectRevocationConsistencyTest extends WebTestCase
         $em->persist($ownerMembership);
         $em->flush();
 
-        $other = DriverManager::getConnection($em->getConnection()->getParams());
+        $configuration = new Configuration();
+        $configuration->setMiddlewares([new EnableForeignKeys()]);
+        $other = DriverManager::getConnection($em->getConnection()->getParams(), $configuration);
         self::assertSame(static::getContainer()->getParameter('kernel.project_dir').'/var/test.db',
             $other->getParams()['path'] ?? null);
+        self::assertSame(1, (int) $other->fetchOne('PRAGMA foreign_keys'));
 
         // onFlush runs after controller authorization and before project SQL.
         // The second connection commits a real membership mutation at that point.

@@ -4,13 +4,15 @@ namespace App\Tests\Functional;
 
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Tools\SchemaTool;
+use App\Tests\Support\ResetsTestDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 final class SignupPersistenceTest extends WebTestCase
 {
+    use ResetsTestDatabase;
+
     #[DataProvider('emailAddressesToNormalize')]
     public function testSignupNormalizesEmail(string $email): void
     {
@@ -45,22 +47,6 @@ final class SignupPersistenceTest extends WebTestCase
         yield 'surrounding tabs and newlines' => ["\tDemo@Example.COM\n"];
     }
 
-    private function resetTestDatabase(): EntityManagerInterface
-    {
-        $em = static::getContainer()->get(EntityManagerInterface::class);
-
-        self::assertSame(
-            static::getContainer()->getParameter('kernel.project_dir').'/var/test.db',
-            $em->getConnection()->getParams()['path'] ?? null
-        );
-
-        $metadata = $em->getMetadataFactory()->getAllMetadata();
-        $schemaTool = new SchemaTool($em);
-        $schemaTool->dropSchema($metadata);
-        $schemaTool->createSchema($metadata);
-
-        return $em;
-    }
 
     #[DataProvider('emailAddressesToNormalize')]
     public function testSignupRejectsDuplicateEmail(string $email): void

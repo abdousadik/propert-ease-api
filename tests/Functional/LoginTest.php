@@ -2,14 +2,15 @@
 
 namespace App\Tests\Functional;
 
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Tools\SchemaTool;
+use App\Tests\Support\ResetsTestDatabase;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use App\Entity\User;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 
 final class LoginTest extends WebTestCase
 {
+    use ResetsTestDatabase;
+
     public function testValidCredentialsReturnToken(): void
     {
         $client = static::createClient();
@@ -97,20 +98,6 @@ final class LoginTest extends WebTestCase
         self::assertArrayNotHasKey('token', $body);
     }
 
-    private function resetTestDatabase(): void
-    {
-        $em = static::getContainer()->get(EntityManagerInterface::class);
-
-        self::assertSame(
-            static::getContainer()->getParameter('kernel.project_dir').'/var/test.db',
-            $em->getConnection()->getParams()['path'] ?? null
-        );
-
-        $metadata = $em->getMetadataFactory()->getAllMetadata();
-        $schemaTool = new SchemaTool($em);
-        $schemaTool->dropSchema($metadata);
-        $schemaTool->createSchema($metadata);
-    }
 
     public function testWrongPasswordCannotLogIn(): void
     {
