@@ -278,6 +278,14 @@ They do not expose email addresses, phone numbers, or password hashes.
 Email invitations and acceptance are not implemented. Organization creation
 does not grant public publishing approval.
 
+## Resource Identifiers
+
+Organization, project, and membership route identifiers are decimal values within
+the database's signed INT range (maximum 2147483647). Out-of-range numeric IDs
+return a generic JSON 404 response. Leading zeros retain their existing lookup
+behavior. Authentication runs before this validation; organization isolation and
+resource permissions are still checked by the controllers.
+
 ## Project Endpoints
 
 All project endpoints require authentication and membership in the selected
