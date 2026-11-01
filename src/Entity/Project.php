@@ -6,6 +6,7 @@ use App\Repository\ProjectRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
+#[ORM\Index(name: 'idx_project_org_active_delivery', columns: ['organization_id', 'active', 'delivery_date'])]
 #[ORM\Entity(repositoryClass: ProjectRepository::class)]
 class Project
 {
