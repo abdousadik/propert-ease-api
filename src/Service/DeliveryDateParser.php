@@ -10,7 +10,7 @@ final class DeliveryDateParser
             return null;
         }
 
-        if (is_string($value)) {
+        if (is_string($value) && !str_contains($value, "\0")) {
             $date = \DateTimeImmutable::createFromFormat(
                 '!Y-m-d H:i:s',
                 $value,
