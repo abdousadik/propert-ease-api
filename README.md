@@ -190,6 +190,20 @@ Authorization: Bearer <jwt>
 ```
 
 Invalid credentials and missing, malformed, or expired tokens return `401`.
+Malformed JSON, non-object login bodies, and missing or non-string credential
+fields return `400` with a safe JSON response:
+
+```json
+{
+  "error": {
+    "code": "invalid_login_data",
+    "message": "Expected a JSON object with string username and password fields."
+  }
+}
+```
+
+These responses do not echo credentials or framework exception details. Empty
+string credentials remain authentication failures (`401`).
 
 ## Organizations and Permissions
 
