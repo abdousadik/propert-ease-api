@@ -592,10 +592,28 @@ acquires that lock. A demoted actor receives 403; a removed actor receives 404.
 The MySQL tests demonstrate both outcomes for add/change/remove operations.
 
 These are service/database tests, not simultaneous HTTP requests. They exercise
-controlled interleavings, not every possible schedule. Project writes currently
-use controller/voter authorization without this membership lock; the policy for
-an already-authorized project write completing after revocation remains a
-separate design decision. No stronger revocation guarantee is claimed here.
+controlled interleavings, not every possible schedule. Project writes use the request-time authorization policy below.
+
+### Project writes and membership revocation
+
+Project create, PATCH and archive operations check membership permissions before
+applying changes. Once a write has been authorized, it may finish if the actor is
+removed or demoted before persistence. The next request must use current
+membership: a removed member receives 404; a member demoted to Viewer receives
+403 on a new project write. The JWT can remain valid for authentication while
+organization access has been revoked.
+
+This policy preserves the current behavior. Project writes do not acquire the
+membership administration lock, so immediate cancellation of already-authorized
+writes is not guaranteed. Membership administration retains its stronger
+transactional, current-state checks under the organization-row lock.
+
+`ProjectRevocationConsistencyTest` demonstrates create, PATCH and archive behavior
+for both removal and demotion. A controlled Doctrine onFlush hook commits the
+membership mutation through a second SQLite connection after authorization and
+before project SQL. Assertions inspect stored project and membership state and
+retry a write with the same JWT. This is a deterministic application-interleaving
+test, not simultaneous MySQL HTTP requests or proof of every possible schedule.
 
 ## Continuous Integration
 
