@@ -485,8 +485,22 @@ SQLite tests do not replace verification of MySQL-specific migrations.
 ### MySQL Concurrency Tests
 
 These tests run competing membership mutations through separate processes and
-database connections. Scenarios cover two self-demotions, two self-removals,
-and a mixed demotion/removal.
+database connections. An independent observer queries MySQL Performance Schema
+and verifies that every worker is waiting for the parent-held organization row
+before the parent releases it. Worker readiness alone is not treated as contention.
+Polling has a five-second deadline; no fixed delay determines the mutation order.
+
+Scenarios cover:
+
+- Competing self-demotions, self-removals, and mixed operations retaining one Owner.
+- Owners attempting to demote/remove each other; the losing actor's revoked access.
+- Successful competing changes to different members of the same organization.
+- Add/change/remove operations waiting while their actor is demoted or removed.
+- Exceptions injected after real INSERT/UPDATE/DELETE statements, verifying rollback
+  through another connection and subsequent acquisition of the released lock.
+
+Assertions inspect committed membership rows and transaction completion, in addition
+to operation outcomes. Failure injection lives only in test support code.
 
 They require the dedicated database `propert_ease_concurrency_test`. The test
 and workers refuse other database names and clean up their own fixture records.
@@ -508,7 +522,17 @@ Set the connection URL in your WSL terminal:
 
 ```bash
 export MYSQL_TEST_DATABASE_URL='mysql://propert_ease:local_password@database:3306/propert_ease_concurrency_test?serverVersion=8.0&charset=utf8mb4'
+export MYSQL_TEST_OBSERVER_DATABASE_URL='mysql://root:local_root_password@database:3306/propert_ease_concurrency_test?serverVersion=8.0&charset=utf8mb4'
 ```
+
+The observer URL above uses the existing local Docker root account only to read
+lock diagnostics. Workers receive only the normal test-account URL. CI similarly
+uses its disposable MySQL service root account for observation. Both connections
+must select the dedicated test database on the same server. A restricted observer
+can instead use SELECT privileges on `performance_schema.data_lock_waits`,
+`performance_schema.data_locks`, `performance_schema.threads`, and a table in the
+test database (to permit selecting that database). No diagnostic privileges are
+required by the application account. Use only disposable test environments here.
 
 Apply migrations and validate the schema:
 
@@ -531,11 +555,47 @@ Run the concurrency tests:
 ```bash
 docker compose exec \
   -e MYSQL_TEST_DATABASE_URL \
+  -e MYSQL_TEST_OBSERVER_DATABASE_URL \
   app php vendor/bin/phpunit tests/Integration/MembershipConcurrencyTest.php
 ```
 
-Without that environment variable, the concurrency cases are skipped.
-The default SQLite suite can still run independently.
+Without `MYSQL_TEST_DATABASE_URL`, the MySQL cases are skipped. If it is set,
+missing observer configuration or diagnostic access fails the tests rather than
+silently skipping contention verification. The default SQLite suite runs
+independently; do not overlap SQLite test runs sharing `var/test.db`.
+
+### Membership transaction contract
+
+`MembershipManager` is the membership mutation boundary:
+
+1. Begin a transaction and acquire a write lock using
+   `UPDATE organization SET name = name WHERE id = ?`.
+2. Read the actor's current membership and the organization-scoped target.
+3. Enforce Owner-only administration and retain at least one Owner.
+4. Apply the mutation and commit. Any exception rolls back the transaction and
+   releases its locks; uniqueness conflicts retain their existing 409 response.
+
+All add/change/remove writers must follow the same organization-lock protocol.
+Locking only the target membership would not serialize changes to different
+Owners, so two requests could both pass the final-Owner count. Different
+organizations use different rows; these tests do not measure throughput.
+
+HTTP controllers call the service outside an existing database transaction. Under
+MySQL's default REPEATABLE READ isolation, a future caller must not wrap it in a
+transaction that established an older consistent-read snapshot before acquiring
+the organization lock. Nested transaction behavior is not a blanket guarantee of
+fresh reads. ORM membership objects can also become stale after DBAL writes;
+mutation authorization therefore uses database reads inside the service.
+
+An operation waiting for the lock must use permissions committed before it
+acquires that lock. A demoted actor receives 403; a removed actor receives 404.
+The MySQL tests demonstrate both outcomes for add/change/remove operations.
+
+These are service/database tests, not simultaneous HTTP requests. They exercise
+controlled interleavings, not every possible schedule. Project writes currently
+use controller/voter authorization without this membership lock; the policy for
+an already-authorized project write completing after revocation remains a
+separate design decision. No stronger revocation guarantee is claimed here.
 
 ## Continuous Integration
 
