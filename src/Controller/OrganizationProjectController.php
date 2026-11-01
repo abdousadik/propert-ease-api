@@ -9,6 +9,7 @@ use App\Service\DeliveryDateParser;
 use App\Service\JsonRequestDecoder;
 use App\Service\PaginationParser;
 use App\Service\ProjectPresenter;
+use App\Service\ProjectInputValidator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -307,7 +308,7 @@ final class OrganizationProjectController extends AbstractController
         Request $request,
         EntityManagerInterface $em,
         JsonRequestDecoder $jsonDecoder,
-        DeliveryDateParser $dateParser
+        ProjectInputValidator $validator
     ): JsonResponse {
         $organization = $em->find(Organization::class, $organizationId);
 
@@ -338,64 +339,10 @@ final class OrganizationProjectController extends AbstractController
             return $data;
         }
 
-        $errors = [];
-        $textFields = [
-            'name' => 255,
-            'label' => 255,
-            'address' => 255,
-            'postalCode' => 6,
-        ];
+        $result = $validator->validateCreate($data);
 
-        foreach ($textFields as $field => $maximum) {
-            $value = $data->$field ?? null;
-
-            if (
-                !is_string($value)
-                || trim($value) === ''
-                || mb_strlen(trim($value), 'UTF-8') > $maximum
-            ) {
-                $errors[$field] =
-                    "Must be a nonblank string of at most {$maximum} characters.";
-            }
-        }
-
-        $floors = $data->numberOfFloors ?? null;
-
-        if (!is_int($floors) || $floors < 0 || $floors > 2147483647) {
-            $errors['numberOfFloors'] =
-                'Must be an integer between 0 and 2147483647.';
-        }
-
-        $allowedFields = [
-            ...array_keys($textFields),
-            'numberOfFloors',
-            'deliveryDate',
-        ];
-
-        foreach (get_object_vars($data) as $field => $value) {
-            if (!in_array($field, $allowedFields, true)) {
-                $errors[$field] = 'Unknown field.';
-            }
-        }
-
-        $deliveryDate = null;
-
-        if (property_exists($data, 'deliveryDate')) {
-            try {
-                $deliveryDate = $dateParser->parse($data->deliveryDate);
-            } catch (\InvalidArgumentException $exception) {
-                $errors['deliveryDate'] = $exception->getMessage();
-            }
-        }
-
-        if ($errors !== []) {
-            return $this->json([
-                'error' => [
-                    'code' => 'validation_failed',
-                    'message' => 'Invalid project data.',
-                    'details' => $errors,
-                ],
-            ], 422);
+        if ($result['errors'] !== []) {
+            return $this->projectValidationError($result['errors']);
         }
 
         $project = (new Project())
@@ -404,9 +351,9 @@ final class OrganizationProjectController extends AbstractController
             ->setLabel(trim($data->label))
             ->setAddress(trim($data->address))
             ->setPostalCode(trim($data->postalCode))
-            ->setNumberOfFloors($floors)
+            ->setNumberOfFloors($data->numberOfFloors)
             ->setActive(true)
-            ->setDeliveryDate($deliveryDate);
+            ->setDeliveryDate($result['deliveryDate']);
 
         $em->persist($project);
         $em->flush();
@@ -434,7 +381,7 @@ final class OrganizationProjectController extends AbstractController
         Request $request,
         EntityManagerInterface $em,
         JsonRequestDecoder $jsonDecoder,
-        DeliveryDateParser $dateParser
+        ProjectInputValidator $validator
     ): JsonResponse {
         $organization = $em->find(Organization::class, $organizationId);
 
@@ -480,76 +427,20 @@ final class OrganizationProjectController extends AbstractController
             return $data;
         }
 
-        $errors = [];
-        $deliveryDate = null;
+        $result = $validator->validateUpdate($data);
+
+        if ($result['errors'] !== []) {
+            return $this->projectValidationError($result['errors']);
+        }
+
         $fields = get_object_vars($data);
-
-        $textFields = [
-            'label' => 255,
-            'address' => 255,
-            'postalCode' => 6,
-        ];
-
-        $allowedFields = [...array_keys($textFields), 'numberOfFloors', 'deliveryDate'];
-
-        if ($fields === []) {
-            $errors['body'] = 'Provide at least one editable field.';
-        }
-
-        foreach ($fields as $field => $value) {
-            if (!in_array($field, $allowedFields, true)) {
-                $errors[$field] = 'Unknown field.';
-                continue;
-            }
-
-            if ($field === 'deliveryDate') {
-                try {
-                    $deliveryDate = $dateParser->parse($value);
-                } catch (\InvalidArgumentException $exception) {
-                    $errors[$field] = $exception->getMessage();
-                }
-
-                continue;
-            }
-
-            if (isset($textFields[$field])) {
-                $maximum = $textFields[$field];
-
-                if (
-                    !is_string($value)
-                    || trim($value) === ''
-                    || mb_strlen(trim($value), 'UTF-8') > $maximum
-                ) {
-                    $errors[$field] =
-                        "Must be a nonblank string of at most {$maximum} characters.";
-                }
-            } elseif (
-                !is_int($value)
-                || $value < 0
-                || $value > 2147483647
-            ) {
-                $errors[$field] =
-                    'Must be an integer between 0 and 2147483647.';
-            }
-        }
-
-        if ($errors !== []) {
-            return $this->json([
-                'error' => [
-                    'code' => 'validation_failed',
-                    'message' => 'Invalid project data.',
-                    'details' => $errors,
-                ],
-            ], 422);
-        }
-
         foreach ($fields as $field => $value) {
             match ($field) {
                 'label' => $project->setLabel(trim($value)),
                 'address' => $project->setAddress(trim($value)),
                 'postalCode' => $project->setPostalCode(trim($value)),
                 'numberOfFloors' => $project->setNumberOfFloors($value),
-                'deliveryDate' => $project->setDeliveryDate($deliveryDate),
+                'deliveryDate' => $project->setDeliveryDate($result['deliveryDate']),
             };
         }
         $em->flush();
@@ -560,5 +451,17 @@ final class OrganizationProjectController extends AbstractController
                 'label' => $project->getLabel(),
             ],
         ]);
+    }
+
+    /** @param array<string, string> $errors */
+    private function projectValidationError(array $errors): JsonResponse
+    {
+        return $this->json([
+            'error' => [
+                'code' => 'validation_failed',
+                'message' => 'Invalid project data.',
+                'details' => $errors,
+            ],
+        ], 422);
     }
 }

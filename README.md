@@ -634,7 +634,8 @@ Use local variables for credentials and tokens. Do not commit real secrets.
 
 ## Architecture at a glance
 
-- Controllers validate HTTP requests, check permissions, and return JSON responses.
+- Controllers decode HTTP requests, check permissions, persist changes, and return JSON responses.
+- ProjectInputValidator shares create/PATCH field rules while preserving their distinct required-field and partial-update behavior.
 - OrganizationVoter maps organization membership to read, edit, and membership-management permissions.
 - MembershipManager serializes membership changes using an organization-row lock and checks actor permissions inside the transaction.
 - Doctrine entities and migrations define persistence; project queries include organization scope.
