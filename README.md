@@ -672,6 +672,12 @@ requests. Additional requests will be added as the API develops.
 
 Use local variables for credentials and tokens. Do not commit real secrets.
 
+## Database Query Measurements
+
+The project filter index and its measured trade-offs are documented in
+[Project query index](docs/database-index.md), with a guarded command for
+reproducing query plans and warm timings in a disposable local database.
+
 ## Architecture at a glance
 
 - Controllers decode HTTP requests, check permissions, persist changes, and return JSON responses.
