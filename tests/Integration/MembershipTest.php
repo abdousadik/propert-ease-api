@@ -6,13 +6,14 @@ use App\Entity\Membership;
 use App\Entity\Organization;
 use App\Entity\User;
 use App\Enum\MembershipRole;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Tools\SchemaTool;
+use App\Tests\Support\ResetsTestDatabase;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 
 final class MembershipTest extends KernelTestCase
 {
+    use ResetsTestDatabase;
+
     public function testUserCanHaveDifferentRolesAcrossOrganizations(): void
     {
         self::bootKernel();
@@ -102,20 +103,4 @@ final class MembershipTest extends KernelTestCase
         $em->flush();
     }
 
-    private function resetTestDatabase(): EntityManagerInterface
-    {
-        $em = static::getContainer()->get(EntityManagerInterface::class);
-
-        self::assertSame(
-            static::getContainer()->getParameter('kernel.project_dir').'/var/test.db',
-            $em->getConnection()->getParams()['path'] ?? null
-        );
-
-        $metadata = $em->getMetadataFactory()->getAllMetadata();
-        $schemaTool = new SchemaTool($em);
-        $schemaTool->dropSchema($metadata);
-        $schemaTool->createSchema($metadata);
-
-        return $em;
-    }
 }

@@ -22,7 +22,11 @@ trait ResetsTestDatabase
 
         $metadata = $em->getMetadataFactory()->getAllMetadata();
         $schemaTool = new SchemaTool($em);
-        $schemaTool->dropSchema($metadata);
+        // Drop children before parents, with foreign-key enforcement left on.
+        foreach (['membership', 'project', 'user', 'organization'] as $table) {
+            $em->getConnection()->executeStatement('DROP TABLE IF EXISTS '.$table);
+        }
+        $em->clear();
         $schemaTool->createSchema($metadata);
 
         return $em;

@@ -487,7 +487,10 @@ docker compose exec app php vendor/bin/phpunit tests/Functional/OrganizationTest
 ```
 
 The regular suite uses the separate SQLite database at `var/test.db`.
-Database-reset helpers verify that path before recreating its schema.
+Database-reset helpers verify that path before recreating its schema. SQLite test
+connections enable foreign-key enforcement, including after reconnecting. The
+shared reset helper drops child tables before parents and keeps enforcement on
+while rebuilding the schema and exercising fixtures/application behavior.
 MySQL concurrency tests use a dedicated database and are skipped when
 `MYSQL_TEST_DATABASE_URL` is not configured.
 
